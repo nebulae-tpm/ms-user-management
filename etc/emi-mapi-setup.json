@@ -1,0 +1,8 @@
+[
+    {
+        "name": "user-management",
+        "type": "graphql",        
+        "src": "api/emi-gateway/graphql/user-management",
+        "preBuildCommands": []
+    }
+]

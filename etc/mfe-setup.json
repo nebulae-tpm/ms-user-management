@@ -1,0 +1,50 @@
+[
+    {
+        "name": "user-management",
+        "src": "frontend/emi/user-management",
+        "groups": [
+            {
+            "id": "BUSINESS_UNIT_MANAGER",
+            "icon": "location_searching",
+            "translate": {
+                "en": "Business units",
+                "es": "Unidades de negocio"
+            },
+            "priority": 200
+            }
+          ],
+          "subgroups": [
+            {
+                "groupId": "BUSINESS_UNIT_MANAGER",
+                "id": "management",
+                "icon": "settings",
+                "translate": {
+                    "en": "Management",
+                    "es": "Gestión"
+                },
+                "priority": 2000
+            }
+        ],
+        "contents": [
+            {
+                "groupId": "BUSINESS_UNIT_MANAGER",
+                "subgroupId": "management",
+                "id": "user-management",
+                "icon": "face",
+                "translate": {
+                    "en": "Users",
+                    "es": "Usuarios"
+                },
+                "navURL": "/user-management",
+                "path": "user-management",
+                "loadChildren": "./main/content/user-management/user-management.module#UserManagementModule",
+                "priority": 2000,
+                "roles" : ["PLATFORM-ADMIN", "BUSINESS-OWNER"],
+                "default" : false
+            }            
+        ],
+        "preBuildCommands": [],
+        "environmentVars": {
+        }
+    }
+]

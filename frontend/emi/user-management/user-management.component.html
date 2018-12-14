@@ -1,0 +1,159 @@
+<div id="user" class="page-layout carded fullwidth" fusePerfectScrollbar>
+  <!-- TOP BACKGROUND -->
+  <div class="top-bg mat-accent-bg"></div>
+  <!-- / TOP BACKGROUND -->
+
+  <!-- CENTER -->
+  <div class="center">
+    <!-- HEADER -->
+    <div class="header white-fg" fxLayout="column" fxLayoutAlign="center center" fxLayout.gt-xs="row" fxLayoutAlign.gt-xs="space-between center">
+      <!-- APP TITLE -->
+      <div class="logo my-12 m-sm-0" fxLayout="row" fxLayoutAlign="start center" fxHide.lt-md fxFlex="10">
+        <mat-icon class="logo-icon mr-16" *fuseIfOnDom [@animate]="{ value: '*', params: { delay: '50ms', scale: '0.2' } }">user</mat-icon>
+        <span class="logo-text h1" *fuseIfOnDom [@animate]="{ value: '*', params: { delay: '100ms', x: '-25px' } }">{{
+          "USER.USER" | translate }}</span>
+      </div>
+                
+      <!-- / APP TITLE -->
+    
+      <!-- SEARCH USER FILTER -->
+      <div class="search-input-wrapper mx-12 m-md-0" fxLayoutAlign="start center" fxFlex="70">
+        <form fxLayout="row wrap" fxFlex="100">
+      
+          <div class="mr-8" fxLayoutAlign="start center" fxFlex>
+            <label for="searchBusiness" class="mr-8" *ngIf="isAdmin">
+              <mat-icon class="secondary-text">search</mat-icon>
+            </label>
+      
+            <mat-form-field floatPlaceholder="never" fxFlex="1 0 auto">
+              <input id="searchBusiness" matInput placeholder="{{'USER.SELECT_BUSINESS' | translate}}" [matAutocomplete]="auto"
+                [(value)]="selectedBusinessData" [formControl]="businessFilterCtrl" *ngIf="isAdmin">
+              <button mat-button *ngIf="false" matSuffix mat-icon-button aria-label="Clear" (click)="onSelectBusinessEvent(undefined)">
+                <mat-icon>close</mat-icon>
+              </button>
+      
+              <input id="myBusiness" matInput placeholder="{{'USER.MY_BUSINESS' | translate}}" [matAutocomplete]="auto"
+                [(value)]="selectedBusinessData" [formControl]="businessFilterCtrl" *ngIf="!isAdmin" readonly="true" />
+            </mat-form-field>
+      
+            <mat-autocomplete #auto="matAutocomplete" (optionSelected)='onSelectBusinessEvent($event.option.value)'
+              [displayWith]="displayFn">
+              <mat-option *ngFor="let business of businessQueryFiltered$ | async" [value]="business">
+                {{ business.generalInfo.name }} (ID: {{ business._id }})
+              </mat-option>
+            </mat-autocomplete>
+      
+          </div>
+      
+          <div fxLayoutAlign="start center" fxFlex>
+            <label for="search" class="mr-8">
+              <mat-icon class="secondary-text">search</mat-icon>
+            </label>
+      
+            <mat-form-field floatPlaceholder="never" fxFlex="1 0 auto">
+              <input id="search" matInput #filter placeholder="{{'USER.SEARCH_USER' | translate}}" />
+            </mat-form-field>
+          </div>
+      
+        </form>
+      </div>
+      <!-- / SEARCH USER FILTER -->
+    
+      <button mat-raised-button class="mat-white-bg" [routerLink]="'user/' + selectedBusinessId + '/new'"  [disabled]="selectedBusinessId == null">
+        <span>{{ "USER.ADD_USER" | translate }}</span>
+      </button>
+    </div>
+    <!-- / HEADER -->
+
+    <!-- CONTENT CARD -->
+    <div class="content-card mat-white-bg">
+      <div fxLayout="column" style="width: 100%; justify-content: space-between" fxLayout.gt-sm="row">
+        <div fxLayout="column" fxFlex="100" fxFlex.gt-sm="100" fxFlex.gt-md="100">
+          <mat-table id="user-table" class="item-table" #table [dataSource]="dataSource" matSort [@animateStagger]="{ value: '50' }"
+            fusePerfectScrollbar>
+            <!-- Username Column -->
+            <ng-container cdkColumnDef="username">
+              <mat-header-cell mat-sort-header="username" *cdkHeaderCellDef>{{
+                "USER.USERNAME" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user">
+                <p class="text-truncate">{{ user.username }}</p>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Fullname Column -->
+            <ng-container cdkColumnDef="fullname">
+              <mat-header-cell mat-sort-header="fullname" *cdkHeaderCellDef>{{
+                "USER.FULLNAME" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user">
+                <p class="text-truncate">
+                  {{ user.generalInfo.name }} {{ user.generalInfo.lastname }}
+                </p>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Type Column -->
+            <ng-container cdkColumnDef="doc_type">
+              <mat-header-cell *cdkHeaderCellDef>{{
+                "USER.DOC_TYPE" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user">
+                <p class="text-truncate" *ngIf="user.generalInfo.documentType == 'CITIZENSHIP_CARD'">
+                  {{ "USER.CITIZENSHIP_CARD" | translate }}
+                </p>
+                <p class="text-truncate" *ngIf="user.generalInfo.documentType == 'FOREIGNER_ID'">
+                  {{ "USER.FOREIGNER_ID" | translate }}
+                </p>
+                <p class="text-truncate" *ngIf="user.generalInfo.documentType == 'PASSPORT'">
+                  {{ "USER.PASSPORT" | translate }}
+                </p>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Name Column -->
+            <ng-container cdkColumnDef="doc_id">
+              <mat-header-cell mat-sort-header="doc_id" *cdkHeaderCellDef>{{
+                "USER.DOC_ID" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user">
+                <p class="text-truncate">{{ user.generalInfo.documentId }}</p>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Active Column -->
+            <ng-container cdkColumnDef="state">
+              <mat-header-cell *cdkHeaderCellDef fxHide fxShow.gt-xs>{{
+                "USER.ACTIVE" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user" fxHide fxShow.gt-xs>
+                <mat-icon *ngIf="user.state" class="active-icon mat-green-600-bg s-16">check</mat-icon>
+                <mat-icon *ngIf="!user.state" class="active-icon mat-red-500-bg s-16">close</mat-icon>
+              </mat-cell>
+            </ng-container>
+
+            <!--
+              Roles Column
+              <ng-container cdkColumnDef="roles">
+                <mat-header-cell *cdkHeaderCellDef fxHide fxShow.gt-xs>{{'USER.ACTIVE' | translate}}</mat-header-cell>
+                <mat-cell *cdkCellDef="let user" fxHide fxShow.gt-xs>
+                  <span class="quantity-indicator text-truncate" [ngClass]="{'mat-primary-200-bg': !user.state, 'mat-green-600-bg': user.state}">
+                  </span>
+                </mat-cell>
+              </ng-container>
+            -->
+            <mat-header-row *cdkHeaderRowDef="displayedColumns"></mat-header-row>
+
+            <mat-row *cdkRowDef="let user; columns: displayedColumns" class="item" matRipple [routerLink]="'user/' + selectedBusinessId + '/' + user.username">
+            </mat-row>
+          </mat-table>
+
+          <mat-paginator #paginator [length]="1000" [pageIndex]="0" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
+          </mat-paginator>
+        </div>
+      </div>
+    </div>
+    <!-- / CONTENT CARD -->
+  </div>
+  <!-- / CENTER -->
+</div>

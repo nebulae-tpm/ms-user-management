@@ -1,0 +1,119 @@
+enum DocumentType {
+  CITIZENSHIP_CARD
+  PASSPORT
+  FOREIGNER_ID
+}
+
+"User type"
+type User {
+  "User ID"
+  id: ID!
+  "Username"
+  username: String!
+  "User general info"
+  generalInfo: UserGeneralInfo
+  "User state"
+  state: Boolean!
+}
+
+"user general info"
+type UserGeneralInfo {
+  "Name"
+  name: String
+  "Lastname"
+  lastname: String
+  "Document type"
+  documentType: DocumentType
+  "Document ID"
+  documentId: String
+  "Email"
+  email: String
+  "Phone"
+  phone: String
+}
+
+type UserRole {
+  id: ID!
+  name: String!  
+}
+
+type Role {
+  "Role ID"
+  id: String!
+  "Role name"
+  name: String!  
+}
+
+input UserInput {
+  "Username"
+  username: String!
+  "Name"
+  name: String!
+  "Lastname"
+  lastname: String!
+  "Document type"
+  documentType: String
+  "Document ID"
+  documentId: String
+  "Email"
+  email: String
+  "Phone"
+  phone: String
+  "User state"
+  state: Boolean
+}
+
+input UserPasswordInput {
+  "User password"
+  password: String!
+  "User temporary"
+  temporary: Boolean!
+}
+
+input RoleInput {
+  id: ID!
+  "Role Name"
+  name: String!
+}
+
+input RolesInput {
+  roles: [RoleInput]
+}
+
+type CommandResponse {
+  "Response code"
+  code: Int
+  "Response message"
+  message: String
+}
+
+type Query {
+  "Gets the users "
+  getUsers(page: Int!, count: Int!, searchFilter: String, businessId: String!): [User]
+  "Gets a user by its username"
+  getUser(username: String!, businessId: String!): User
+  "Gets user role mapping"
+  getUserRoleMapping(userId: ID!, businessId: String!): [UserRole]
+  "Gets roles that the petitioner can assign to another users according to its role"
+  getRoles: [Role]
+}
+
+type Mutation {
+  "Create a new user"
+  createUser(businessId: String!, input: UserInput): CommandResponse
+  "Updates the user according to the ID"
+  updateUserGeneralInfo(userId: ID!, businessId: String!, input: UserInput): CommandResponse
+  "Updates the user state"
+  updateUserState(userId: ID!, username: String!, businessId: String!, state: Boolean!): CommandResponse
+  "Changes user password"
+  resetUserPassword(userId: ID!, businessId: String!, input: UserPasswordInput): CommandResponse  
+  "Adds the roles to the user"
+  addRolesToTheUser(userId: ID!, businessId: String!, input: RolesInput): CommandResponse
+  "Removes the roles from the user"
+  removeRolesFromUser(userId: ID!, businessId: String!, input: RolesInput): CommandResponse
+}
+
+type Subscription {
+  "This events is triggered when a user is created, updated or deleted"
+  UserUpdatedSubscription: User
+}
