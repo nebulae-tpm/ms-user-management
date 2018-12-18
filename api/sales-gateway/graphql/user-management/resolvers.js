@@ -3,7 +3,8 @@ const RoleValidator  = require("../../tools/RoleValidator");
 const { CustomError } = require("../../tools/customError");
 const PubSub = require("graphql-subscriptions").PubSub;
 const pubsub = new PubSub();
-const Rx = require("rxjs");
+const { of } = require("rxjs");
+const { mergeMap, catchError, map } = require("rxjs/operators");
 const broker = require("../../broker/BrokerFactory")();
 const contextName = "User-Management";
 
@@ -13,16 +14,19 @@ const INTERNAL_SERVER_ERROR_CODE = 16001;
 const USERS_PERMISSION_DENIED_ERROR_CODE = 16002;
 
 function getResponseFromBackEnd$(response) {  
-  return Rx.Observable.of(response).map(resp => {
-    if (resp.result.code != 200) {      
-      const err = new Error();
-      err.name = "Error";
-      err.message = resp.result.error;
-      Error.captureStackTrace(err, "Error");
-      throw err;
-    }
-    return resp.data;
-  });
+  return of(response)
+    .pipe(
+      map(resp => {
+        if (resp.result.code != 200) {      
+          const err = new Error();
+          err.name = "Error";
+          err.message = resp.result.error;
+          Error.captureStackTrace(err, "Error");
+          throw err;
+        }
+        return resp.data;
+      })
+    )
 }
 
 /**
@@ -31,40 +35,42 @@ function getResponseFromBackEnd$(response) {
  * @param {*} operationName
  */
 function handleError$(err, methodName) {
-  return Rx.Observable.of(err).map(err => {
-    const exception = { data: null, result: {} };
-    const isCustomError = err instanceof CustomError;
-    if (!isCustomError) {
-      err = new CustomError(
-        err.name,
-        methodName,
-        INTERNAL_SERVER_ERROR_CODE,
-        err.message
-      );
-    }
-    exception.result = {
-      code: err.code,
-      error: { ...err.getContent() }
-    };
-    return exception;
-  });
+  return of(err)
+    .pipe(
+      map(err => {
+        const exception = { data: null, result: {} };
+        const isCustomError = err instanceof CustomError;
+        if (!isCustomError) {
+          err = new CustomError(
+            err.name,
+            methodName,
+            INTERNAL_SERVER_ERROR_CODE,
+            err.message
+          );
+        }
+        exception.result = {
+          code: err.code,
+          error: { ...err.getContent() }
+        };
+        return exception;
+      })
+    )
 }
 
 module.exports = {
   //// QUERY ///////
   Query: {
     getToken(root, args, context){
-      return Rx.Observable.of({})
-      .mergeMap(response => {
-        return broker.forwardAndGetReply$(
-          "Token",
-          "salesgateway.graphql.query.getToken",
-          { root, args, jwt: context.encodedToken },
-          2000
-        );
-      })
-      .catch(err => handleError$(err, "getToken"))
-      .mergeMap(response => getResponseFromBackEnd$(response))
+      return  broker.forwardAndGetReply$(
+        "Token",
+        "salesgateway.graphql.query.getToken",
+        { root, args, jwt: context.encodedToken },
+        2000
+      )
+      .pipe(
+        catchError(err => handleError$(err, "getToken")),
+        mergeMap(response => getResponseFromBackEnd$(response))
+      )
       .toPromise();
     }
     
