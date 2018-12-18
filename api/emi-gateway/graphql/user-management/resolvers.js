@@ -1,9 +1,11 @@
 const withFilter = require("graphql-subscriptions").withFilter;
-const RoleValidator  = require("../../tools/RoleValidator");
+const RoleValidator = require("../../tools/RoleValidator");
 const { CustomError } = require("../../tools/customError");
 const PubSub = require("graphql-subscriptions").PubSub;
 const pubsub = new PubSub();
-const Rx = require("rxjs");
+// const Rx = require("rxjs");
+const { of } = require("rxjs");
+const { mergeMap, catchError, map } = require("rxjs/operators");
 const broker = require("../../broker/BrokerFactory")();
 const contextName = "User-Management";
 
@@ -13,20 +15,22 @@ const INTERNAL_SERVER_ERROR_CODE = 16001;
 const USERS_PERMISSION_DENIED_ERROR_CODE = 16002;
 
 /**
- * get response and return an error if the http code is different to 200 
- * @param {*} response 
+ * get response and return an error if the http code is different to 200
+ * @param {*} response
  */
 function getResponseFromBackEnd$(response) {
-  return Rx.Observable.of(response).map(resp => {
-    if (resp.result.code != 200) {
-      const err = new Error();
-      err.name = "Error";
-      err.message = resp.result.error;
-      Error.captureStackTrace(err, "Error");
-      throw err;
-    }
-    return resp.data;
-  });
+  return of(response).pipe(
+    map(resp => {
+      if (resp.result.code != 200) {
+        const err = new Error();
+        err.name = "Error";
+        err.message = resp.result.error;
+        Error.captureStackTrace(err, "Error");
+        throw err;
+      }
+      return resp.data;
+    })
+  );
 }
 
 /**
@@ -35,23 +39,27 @@ function getResponseFromBackEnd$(response) {
  * @param {*} operationName
  */
 function handleError$(err, methodName) {
-  return Rx.Observable.of(err).map(err => {
-    const exception = { data: null, result: {} };
-    const isCustomError = err instanceof CustomError;
-    if (!isCustomError) {
-      err = new CustomError(
-        err.name,
-        methodName,
-        INTERNAL_SERVER_ERROR_CODE,
-        err.message
-      );
-    }
-    exception.result = {
-      code: err.code,
-      error: { ...err.getContent() }
-    };
-    return exception;
-  });
+  return of(err).pipe(
+    map(err => {
+      {
+        const exception = { data: null, result: {} };
+        const isCustomError = err instanceof CustomError;
+        if (!isCustomError) {
+          err = new CustomError(
+            err.name,
+            methodName,
+            INTERNAL_SERVER_ERROR_CODE,
+            err.message
+          );
+        }
+        exception.result = {
+          code: err.code,
+          error: { ...err.getContent() }
+        };
+        return exception;
+      }
+    })
+  );
 }
 
 module.exports = {
@@ -66,16 +74,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.query.getUsers",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "getUsers"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.query.getUsers",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "getUsers")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     getUser(root, args, context) {
@@ -87,16 +97,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.query.getUser",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "getUser"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.query.getUser",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "getUser")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     getUserRoleMapping(root, args, context) {
@@ -108,16 +120,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.query.getUserRoleMapping",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "getUserRoleMapping"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.query.getUserRoleMapping",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "getUserRoleMapping")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     getRoles(root, args, context) {
@@ -129,18 +143,20 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.query.getRoles",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "getRoles"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.query.getRoles",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "getRoles")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
-    },
+    }
   },
 
   //// MUTATIONS ///////
@@ -154,16 +170,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.createUser",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "createUser"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.createUser",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "createUser")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     updateUserGeneralInfo(root, args, context) {
@@ -175,16 +193,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.updateUserGeneralInfo",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, " updateUserGeneralInfo"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.updateUserGeneralInfo",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, " updateUserGeneralInfo")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     updateUserState(root, args, context) {
@@ -196,16 +216,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.updateUserState",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, " updateUserState"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.updateUserState",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, " updateUserState")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     resetUserPassword(root, args, context) {
@@ -217,16 +239,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.resetUserPassword",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, " resetUserPassword"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.resetUserPassword",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, " resetUserPassword")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     addRolesToTheUser(root, args, context) {
@@ -238,16 +262,18 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.addRolesToTheUser",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "addRolesToTheUser"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.addRolesToTheUser",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "addRolesToTheUser")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
     },
     removeRolesFromUser(root, args, context) {
@@ -259,18 +285,20 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .mergeMap(response => {
-          return context.broker.forwardAndGetReply$(
-            "User",
-            "emigateway.graphql.mutation.removeRolesFromUser",
-            { root, args, jwt: context.encodedToken },
-            2000
-          );
-        })
-        .catch(err => handleError$(err, "removeRolesFromUser"))
-        .mergeMap(response => getResponseFromBackEnd$(response))
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.removeRolesFromUser",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "removeRolesFromUser")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
         .toPromise();
-    },
+    }
   },
 
   //// SUBSCRIPTIONS ///////
