@@ -22,6 +22,7 @@ function getResponseFromBackEnd$(response) {
   return of(response).pipe(
     map(resp => {
       if (resp.result.code != 200) {
+        console.log(resp);
         const err = new Error();
         err.name = "Error";
         err.message = resp.result.error;
