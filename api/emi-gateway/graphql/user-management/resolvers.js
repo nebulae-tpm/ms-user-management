@@ -66,6 +66,7 @@ module.exports = {
   //// QUERY /////
   Query: {
     getUsers(root, args, context) {
+      console.log("getUsers(root, args, context) ==> ", args);
       return RoleValidator.checkPermissions$(
         context.authToken.realm_access.roles,
         contextName,

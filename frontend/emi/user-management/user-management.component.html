@@ -113,9 +113,8 @@
 
             <!-- Name Column -->
             <ng-container cdkColumnDef="doc_id">
-              <mat-header-cell mat-sort-header="doc_id" *cdkHeaderCellDef>{{
-                "USER.DOC_ID" | translate
-                }}</mat-header-cell>
+              <mat-header-cell mat-sort-header="doc_id" *cdkHeaderCellDef>{{ "USER.DOC_ID" | translate }}                
+              </mat-header-cell>
               <mat-cell *cdkCellDef="let user">
                 <p class="text-truncate">{{ user.generalInfo.documentId }}</p>
               </mat-cell>

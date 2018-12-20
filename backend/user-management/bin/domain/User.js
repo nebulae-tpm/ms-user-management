@@ -16,6 +16,7 @@ const {
   PERMISSION_DENIED_ERROR_CODE
 } = require("../tools/ErrorCodes");
 
+
 /**
  * Singleton instance
  */
