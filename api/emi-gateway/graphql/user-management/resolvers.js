@@ -5,7 +5,7 @@ const PubSub = require("graphql-subscriptions").PubSub;
 const pubsub = new PubSub();
 // const Rx = require("rxjs");
 const { of } = require("rxjs");
-const { mergeMap, catchError, map } = require("rxjs/operators");
+const { mergeMap, catchError, map, tap } = require("rxjs/operators");
 const broker = require("../../broker/BrokerFactory")();
 const contextName = "User-Management";
 
@@ -74,7 +74,7 @@ module.exports = {
         "Permission denied",
         ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
       )
-        .pipe(
+        .pipe(          
           mergeMap(() =>
             broker.forwardAndGetReply$(
               "User",
@@ -82,7 +82,7 @@ module.exports = {
               { root, args, jwt: context.encodedToken },
               2000
             )
-          ),
+          ),          
           catchError(err => handleError$(err, "getUsers")),
           mergeMap(response => getResponseFromBackEnd$(response))
         )

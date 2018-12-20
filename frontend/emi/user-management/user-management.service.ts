@@ -1,8 +1,7 @@
 import { query } from '@angular/animations';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs/Observable';
-import * as Rx from 'rxjs';
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject } from 'rxjs';
 import { GatewayService } from '../../../api/gateway.service';
 import {
   getUsers,
@@ -34,9 +33,9 @@ export class UserManagementService {
   }
 
   /**
-   * 
-   * @param filterText 
-   * @param limit 
+   *
+   * @param filterText
+   * @param limit
    */
   getBusinessByFilter(filterText: String, limit: number): Observable<any> {
     return this.gateway.apollo

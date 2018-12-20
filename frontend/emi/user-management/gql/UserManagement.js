@@ -28,8 +28,8 @@ export const getMyBusiness = gql`
 
 //Gets the users filtered by page, count and search filter
 export const getUsers = gql`
-  query getUsers($page: Int!, $count: Int!, $searchFilter: String, $businessId: String!){
-    getUsers(page: $page, count: $count, searchFilter: $searchFilter, businessId: $businessId){
+  query getUsers($page: Int!, $count: Int!, $searchFilter: String, $businessId: String!) {
+    getUsers(page: $page, count: $count, searchFilter: $searchFilter, businessId: $businessId ){
       id
       username
       generalInfo{
