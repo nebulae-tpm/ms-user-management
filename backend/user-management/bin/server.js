@@ -8,6 +8,7 @@ const eventSourcing = require('./tools/EventSourcing')();
 const eventStoreService = require('./services/event-store/EventStoreService')();
 const mongoDB = require('./data/MongoDB').singleton();
 const KeycloakDA = require('./data/KeycloakDA').singleton();
+const UserDA = require('./data/UserDA');
 const emiGatewayGraphQlService = require('./services/emi-gateway/GraphQlService')();
 const salesGatewayGraphQlService = require('./services/sales-gateway/GraphQlService')();
 const Rx = require('rxjs');
@@ -16,10 +17,11 @@ const start = () => {
     Rx.Observable.concat(
         eventSourcing.eventStore.start$(),
         eventStoreService.start$(),
-        mongoDB.start$(),
+        mongoDB.start$(),        
+        UserDA.start$(),
         emiGatewayGraphQlService.start$(),
         salesGatewayGraphQlService.start$(),
-        KeycloakDA.checkKeycloakToken$()
+        KeycloakDA.checkKeycloakToken$(),        
     ).subscribe(
         (evt) => {
             //console.log('Subscribe =========>' , evt)

@@ -185,6 +185,29 @@ module.exports = {
           mergeMap(response => getResponseFromBackEnd$(response))
         )
         .toPromise();
+    },    
+    createUserAuth(root, args, context) {
+      return RoleValidator.checkPermissions$(
+        context.authToken.realm_access.roles,
+        contextName,
+        "createUserAuth",
+        USERS_PERMISSION_DENIED_ERROR_CODE,
+        "Permission denied",
+        ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
+      )
+        .pipe(
+          mergeMap(() =>
+            context.broker.forwardAndGetReply$(
+              "User",
+              "emigateway.graphql.mutation.createUserAuth",
+              { root, args, jwt: context.encodedToken },
+              2000
+            )
+          ),
+          catchError(err => handleError$(err, "createUserAuth")),
+          mergeMap(response => getResponseFromBackEnd$(response))
+        )
+        .toPromise();
     },
     updateUserGeneralInfo(root, args, context) {
       return RoleValidator.checkPermissions$(

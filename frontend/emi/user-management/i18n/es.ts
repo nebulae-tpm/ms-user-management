@@ -2,7 +2,7 @@ export const locale = {
   lang: 'es',
   data: {
     USER: {
-      SELECT_BUSINESS: 'Buscar unidad de negocio',
+      SELECT_BUSINESS: 'Debe seleccionar una unidad de negocio',
       SEARCH_USER: 'Buscar usuario',
       USER: 'Usuarios',
       SEARCH: 'Buscar',
@@ -14,7 +14,7 @@ export const locale = {
       ACTIVE: 'Activo',
       ADD_USER: 'Agregar usuario',
       GENERAL_INFO: 'Información general',
-      CREDENTIALS: 'Credenciales',
+      AUTH: 'Credenciales',
       ROLES: 'Roles',
       SESSIONS: 'Sesiones',
       FULLNAME: 'Nombre completo',
@@ -37,7 +37,7 @@ export const locale = {
       NEW_PASSWORD: 'Nueva contraseña',
       PASSWORD_CONFIRMATION: 'Confirmar nueva contraseña',
       TEMPORARY: 'Temporal',
-      RESET_CREDENTIALS: 'Cambiar contraseña',
+      RESET_AUTH: 'Cambiar contraseña',
       ADD_ROLES: 'Agregar roles',
       REMOVE_ROLES: 'Eliminar roles',
       SYSTEM_ROLES: 'Roles del sistema',
@@ -59,7 +59,8 @@ export const locale = {
         'POS': 'POS',
         'PLATFORM-ADMIN': 'Administrador plataforma',
         'SYSADMIN': 'Administrador de sistema'
-      }
+      },
+      CLOSE: 'Cerrar'
     },
     ERRORS: {
       15001: 'Error interno de servidor',

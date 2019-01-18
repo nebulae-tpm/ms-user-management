@@ -10,7 +10,7 @@ class KeycloakDA {
    * initialize and configure keycloak admin client
    * @param { { url, dbName } } ops
    */
-  constructor({realmName, baseUrl, username, password, grant_type, client_id }) {
+  constructor({realmName, baseUrl, username, password, grant_type, client_id }) {    
     this.settings = {realmName, baseUrl, username, password, grant_type, client_id};
     this.keycloakAdmin = new KeycloakAdminClient(this.settings);
     this.tokenTimeSubject$ = new Rx.BehaviorSubject(1000);

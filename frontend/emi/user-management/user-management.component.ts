@@ -13,6 +13,8 @@ import {
   Validators
 } from '@angular/forms';
 
+import { Router } from "@angular/router";
+
 //////////// i18n ////////////
 import { FuseTranslationLoaderService } from './../../../core/services/translation-loader.service';
 import { TranslateService } from '@ngx-translate/core';
@@ -47,7 +49,8 @@ import {
 } from 'rxjs/operators';
 
 //////////// Services ////////////
-import { KeycloakService } from 'keycloak-angular';
+import { KeycloakService } from "keycloak-angular";
+import { ToolbarService } from "../../toolbar/toolbar.service";
 
 @Component({
   // tslint:disable-next-line:component-selector
@@ -63,7 +66,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   // Table data
   dataSource = new MatTableDataSource();
   // Columns to show in the table
-  displayedColumns = ['username', 'fullname', 'doc_type', 'doc_id', 'state'];
+  displayedColumns = ['fullname', 'doc_type', 'doc_id', 'state', 'username'];
 
   // Table values
   @ViewChild(MatPaginator) paginator: MatPaginator;
@@ -93,7 +96,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private translate: TranslateService,
     private dialog: MatDialog,
     private formBuilder: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private toolbarService: ToolbarService,
+    private router: Router,
   ) {
     this.translationLoader.loadTranslations(english, spanish);
     this.businessFilterCtrl = new FormControl();
@@ -107,6 +112,23 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.loadFilterCache();
     // Refresh the users table
     this.refreshTable();
+  }
+
+    /**
+   * Navigates to the detail page
+   */
+  goToDetail(){
+    this.toolbarService.onSelectedBusiness$
+    .pipe(
+      take(1)
+    ).subscribe(selectedBusiness => {
+      console.log('selectedBusiness => ', selectedBusiness);
+      if (!selectedBusiness || !selectedBusiness.id){
+        this.showSnackBar('USER.SELECT_BUSINESS');
+      }else{
+        this.router.navigate(['user-management/user/' + selectedBusiness.id + '/new']);
+      }
+    });
   }
 
   loadFilterCache(){
@@ -157,7 +179,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   getBusinessFilter$(){
-    return this.userManagementService.selectedBusinessEvent$
+    return this.toolbarService.onSelectedBusiness$
     .pipe(
       debounceTime(150),
       distinctUntilChanged()
@@ -173,7 +195,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     .pipe(
       filter(([userFilter, businessFilter, paginator]) => businessFilter != null),
       mergeMap(([userFilter, businessFilter, paginator]) =>
-        this.getUsers$(paginator.pageIndex, paginator.pageSize, userFilter, businessFilter._id)),
+        this.getUsers$(paginator.pageIndex, paginator.pageSize, userFilter, businessFilter.id)),
       takeUntil(this.ngUnsubscribe)
     )
     .subscribe(model => {
@@ -200,7 +222,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
             map((res: any) => res.data.myBusiness),
             tap(business => {
               this.businessFilterCtrl.setValue(business);
-              this.onSelectBusinessEvent(business);
+              //this.onSelectBusinessEvent(business);
             }),
             toArray()
           );
@@ -247,23 +269,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     return (business || {generalInfo: {}}).generalInfo.name;
   }
 
-  /**
-   * Finds the users and updates the table data
-   * @param page page number
-   * @param count Max amount of users that will be return.
-   * @param searchFilter Search filter
-   * @param businessId business id filter
-   */
-  // refreshDataTable(page, count, searchFilter, businessId) {
-  //   this.userManagementService
-  //     .getUsers$(page, count, searchFilter, businessId)
-  //     .pipe(
-  //       mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
-  //       filter((resp: any) => !resp.errors || resp.errors.length === 0),
-  //     ).subscribe(model => {
-  //       this.dataSource.data = model.data.getUsers;
-  //     });
-  // }
+  showSnackBar(message) {
+    this.snackBar.open(this.translationLoader.getTranslate().instant(message),
+      this.translationLoader.getTranslate().instant('USER.CLOSE'), {
+        duration: 4000
+      });
+  }
 
   /**
    * Handles the Graphql errors and show a message to the user

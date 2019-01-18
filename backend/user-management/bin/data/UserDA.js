@@ -1,10 +1,24 @@
 "use strict";
 
+let mongoDB = undefined;
 const Rx = require("rxjs");
 const KeycloakDA = require("./KeycloakDA").singleton();
+const CollectionName = "User";
 
-class UserKeycloakDA {
+class UserDA {
 
+  static start$(mongoDbInstance) {
+    return Rx.Observable.create((observer) => {
+      if (mongoDbInstance) {
+        mongoDB = mongoDbInstance;
+        observer.next('using given mongo instance ');
+      } else {
+        mongoDB = require('./MongoDB').singleton();
+        observer.next('using singleton system-wide mongo instance');
+      }
+      observer.complete();
+    });
+  }
 
    /**
     * Adds the specified roles to the user
@@ -38,17 +52,31 @@ class UserKeycloakDA {
     );
   }
 
-  /**
-   * Creates a new user
+
+    /**
+   * Creates a new user on Keycloak and Mongo
    * @param {*} user user to create
    */
   static createUser$(user) {
-    //const USER_ROLES_ALLOW_TO_ASSIGN = JSON.parse(process.env.USER_ROLES_ALLOW_TO_ASSIGN);
+    return Rx.Observable.of(user)
+    .mergeMap(evt => UserDA.createUserMongo$(user));
+  }
 
+    /**
+   * Creates a new user on Mongo
+   * @param {*} business user to create
+   */
+  static createUserMongo$(user) {
+    const collection = mongoDB.db.collection(CollectionName);
+    return Rx.Observable.defer(() => collection.insertOne(user));
+  }
+
+    /**
+   * Creates a new user on Keycloak
+   * @param {*} user user to create
+   */
+  static createUserKeycloak$(user) { 
     const attributes = {};
-    attributes["documentType"] = user.documentType;
-    attributes["documentId"] = user.documentId;
-    attributes["phone"] = user.phone;
     attributes["businessId"] = user.businessId;
 
     const userKeycloak = {
@@ -58,7 +86,7 @@ class UserKeycloakDA {
       attributes: attributes,
       email: user.email,
       enabled: user.state,
-      id: user.id
+      id: user._id
     };
 
     return Rx.Observable.defer(() =>
@@ -68,13 +96,73 @@ class UserKeycloakDA {
       )
     );
   }
+  
+
+  // /**
+  //  * Creates a new user on Keycloak
+  //  * @param {*} user user to create
+  //  */
+  // static createUserKeycloak$(user) { 
+  //   const attributes = {};
+  //   attributes["documentType"] = user.documentType;
+  //   attributes["documentId"] = user.documentId;
+  //   attributes["phone"] = user.phone;
+  //   attributes["businessId"] = user.businessId;
+
+  //   const userKeycloak = {
+  //     username: user.username,
+  //     firstName: user.name,
+  //     lastName: user.lastname,
+  //     attributes: attributes,
+  //     email: user.email,
+  //     enabled: user.state,
+  //     id: user.id
+  //   };
+
+  //   return Rx.Observable.defer(() =>
+  //     KeycloakDA.keycloakClient.users.create(
+  //       process.env.KEYCLOAK_BACKEND_REALM_NAME,
+  //       userKeycloak
+  //     )
+  //   );
+  // }
+
+   /**
+   * Updates the user general info
+   * @param {*} generalInfo user general info
+   */
+  static updateUserGeneralInfo$(userId, generalInfo) {
+    return Rx.Observable.of(generalInfo)
+    .mergeMap(evt => UserDA.updateUserGeneralInfoMongo$(userId, generalInfo));
+  }
+
+        /**
+   * modifies the general info of the indicated msentitypascal 
+   * @param {*} userId  User ID
+   * @param {*} user  General info
+   */
+  static updateUserGeneralInfoMongo$(userId, generalInfo) {
+    const collection = mongoDB.db.collection(CollectionName);
+
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId },
+          {
+            $set: {generalInfo: generalInfo}
+          },{
+            returnOriginal: false
+          }
+        )
+    )
+    .map(result => result && result.value ? result.value : undefined);
+  }
 
   /**
    * Updates the user
    * @param {*} userId User ID
    * @param {*} user user to updated
    */
-  static updateUserGeneralInfo$(userId, user) {
+  static updateUserGeneralInfoKeycloak$(userId, user) {
     const attributes = {};
     attributes["documentType"] = user.generalInfo.documentType;
     attributes["documentId"] = user.generalInfo.documentId;
@@ -104,6 +192,37 @@ class UserKeycloakDA {
    * @param {*} newUserState boolean that indicates the new user state
    */
   static updateUserState$(userId, newUserState) {
+    return Rx.Observable.of(newUserState)
+    .mergeMap(evt => UserDA.updateUserStateMongo$(userId, newUserState));
+  }
+
+  /**
+   * Updates the user state on Mongo
+   * @param {*} userId User ID
+   * @param {*} newUserState boolean that indicates the new user state
+   */
+  static updateUserStateMongo$(userId, newUserState) {
+    console.log('updateUserStateMongo => ', userId, newUserState);
+    const collection = mongoDB.db.collection(CollectionName);
+    
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId},
+          {
+            $set: {state: newUserState}
+          },{
+            returnOriginal: false
+          }
+        )
+    ).map(result => result && result.value ? result.value : undefined);
+  }
+
+  /**
+   * Updates the user state
+   * @param {*} userId User ID
+   * @param {*} newUserState boolean that indicates the new user state
+   */
+  static updateUserStateKeycloak$(userId, newUserState) {
     const userKeycloak = {
       id: userId,
       enabled: newUserState
@@ -177,6 +296,69 @@ class UserKeycloakDA {
     );
   }
 
+
+  /**
+   * gets all the users registered on the system.
+   *
+   * @param {int} page Indicates the page number which will be returned
+   * @param {int} count Indicates the amount of rows that will be returned
+   * @param {filter} filterText filter to apply to the query.
+   */
+  static getUsers$(page, count, filterText, businessId) {
+    let filterObject = {};
+    if (filterText) {
+      filterObject = {
+        $or: [
+          { 'generalInfo.name': { $regex: `${filterText}.*`, $options: "i" } },
+          { 'generalInfo.documentId': { $regex: `${filterText}.*`, $options: "i" } }
+        ]
+      };
+    }
+    
+    if(businessId){
+      filterObject.businessId = businessId;
+    }
+
+    const collection = mongoDB.db.collection(CollectionName);
+    return Rx.Observable.defer(()=>
+      collection
+        .find(filterObject)
+        .sort({timestamp: -1})
+        .skip(count * page)
+        .limit(count)
+        .toArray()
+    );
+  }
+
+
+    /**
+   * Gets the users paging
+   * @param {*} username
+   * @param {*} email
+   */
+  static getUserKeycloak$(username, email) {
+    const optionsFilter = {
+      max: 1
+    };
+
+    if(username){
+      optionsFilter.username = username;      
+    }
+
+    if(email){
+      optionsFilter.email = email;
+    }
+    return Rx.Observable.of(optionsFilter)
+    .mergeMap(filter => {
+      return KeycloakDA.keycloakClient.users.find(
+        process.env.KEYCLOAK_BACKEND_REALM_NAME,
+        filter
+      );
+    })
+  }
+
+
+
   /**
    * Gets the users paging
    * @param {*} page
@@ -187,7 +369,7 @@ class UserKeycloakDA {
    * @param {*} email
    * @param {*} userId
    */
-  static getUsers$(
+  static getUsers1$(
     page,
     paginationCount,
     searchFilter,
@@ -275,6 +457,64 @@ class UserKeycloakDA {
       }
     );
   }
+
+  /**
+   * Gets user by id
+   * @param {String} id User ID
+   * @param {String} businessId Business ID of the user
+   */
+  static getUserById$(id, businessId) {
+    let query = {
+      _id: id
+    };
+
+    if(businessId){
+      query.businessId = businessId;
+    }
+
+    return this.getUserByFilter$(query);
+  }
+
+  /**
+   * Gets user by email
+   * @param {String} email User email
+   * @param {String} ignoreUserId if this value is enter, this user will be ignore in the query 
+   */
+  static getUserByEmailMongo$(email, ignoreUserId) {
+    let query = {      
+      'generalInfo.email': email
+    };
+    if(ignoreUserId){
+      query._id = {$ne: ignoreUserId};
+    }
+    return this.getUserByFilter$(query);
+  }
+
+    /**
+   * Gets user by username
+   * @param {String} username User username
+   * @param {String} ignoreUserId if this value is enter, this user will be ignore in the query 
+   */
+  static getUserByUsernameMongo$(username, ignoreUserId) {
+    let query = {
+      'auth.username': username
+    };
+
+    if(ignoreUserId){
+      query._id = {$ne: ignoreUserId};
+    }
+    return this.getUserByFilter$(query);
+  }
+  
+  /**
+   * Gets an user according to the query
+   * @param {Object} filterQuery Query to filter
+   */
+  static getUserByFilter$(filterQuery) {
+    const collection = mongoDB.db.collection(CollectionName);
+    return Rx.Observable.defer(() => collection.findOne(filterQuery));
+  }
+
 
   /**
    * Gets the roles of the specified user.
@@ -372,6 +612,6 @@ class UserKeycloakDA {
 }
 
 /**
- * @returns {UserKeycloakDA}
+ * @returns {UserDA}
  */
-module.exports = UserKeycloakDA;
+module.exports = UserDA;

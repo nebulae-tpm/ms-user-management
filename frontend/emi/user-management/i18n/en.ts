@@ -2,7 +2,7 @@ export const locale = {
   lang: 'en',
   data: {
     USER: {
-      SELECT_BUSINESS: 'Search business unit',
+      SELECT_BUSINESS: 'You must select a business unit',
       SEARCH_USER: 'Search user',
       USER: 'Users',
       SEARCH: 'Search',
@@ -14,7 +14,7 @@ export const locale = {
       ACTIVE: 'Active',
       ADD_USER: 'Add user',
       GENERAL_INFO: 'General info',
-      CREDENTIALS: 'Credencials',
+      AUTH: 'Auth',
       ROLES: 'Roles',
       SESSIONS: 'Sessions',
       FULLNAME: 'Full name',
@@ -37,7 +37,7 @@ export const locale = {
       NEW_PASSWORD: 'New password',
       PASSWORD_CONFIRMATION: 'Confirm new password',
       TEMPORARY: 'Temporary',
-      RESET_CREDENTIALS: 'Reset password',
+      RESET_AUTH: 'Reset password',
       ADD_ROLES: 'Add roles',
       REMOVE_ROLES: 'Remove roles',
       SYSTEM_ROLES: 'System roles',
@@ -59,7 +59,8 @@ export const locale = {
         'POS': 'POS',
         'PLATFORM-ADMIN': 'Platform admin',
         'SYSADMIN': 'System admin'
-      }
+      },
+      CLOSE: 'Close'
     }
   },
   ERRORS: {

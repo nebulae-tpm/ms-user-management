@@ -1,7 +1,7 @@
 "use strict";
 
 const Rx = require("rxjs");
-const UserKeycloakDA = require("../data/UserKeycloakDA");
+const UserDA = require("../data/UserDA");
 const broker = require("../tools/broker/BrokerFactory")();
 const eventSourcing = require("../tools/EventSourcing")();
 const RoleValidator = require("../tools/RoleValidator");
@@ -39,18 +39,21 @@ class User {
       "Permission denied",
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
-    .do(roles => {
-      UserValidatorHelper.checkBusiness(args, roles, authToken)
-    })
+    // .do(roles => {
+    //   UserValidatorHelper.checkBusiness(args, roles, authToken)
+    // })
       .mergeMap(val => {
-        return UserKeycloakDA.getUsers$(
+        return UserDA.getUsers$(
           args.page,
           args.count,
           args.searchFilter,
           args.businessId
         );
       })
-      .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
+      .mergeMap(rawResponse => {
+        console.log('getUsers => ', rawResponse);
+        return this.buildSuccessResponse$(rawResponse);
+      })
       .catch(err => {
         return this.handleError$(err);
       });
@@ -72,15 +75,16 @@ class User {
       "Permission denied",
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
-    .do(roles => {
-      UserValidatorHelper.checkBusiness(args, roles, authToken)
-    })
-    .mergeMap(val => {
-
-        return UserKeycloakDA.getUser$(
-          args.username,
-          undefined,
-          args.businessId
+    // .do(roles => {
+    //   UserValidatorHelper.checkBusiness(args, roles, authToken)
+    // })
+    .mergeMap(roles => {
+      const isPlatformAdmin = roles["PLATFORM-ADMIN"];
+      //If an user does not have the role, the query must be filtered with the businessId of the user
+      const businessId = !isPlatformAdmin? (authToken.businessId || ''): null;
+        return UserDA.getUserById$(
+          args.id,
+          businessId
         );
       })
       .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
@@ -105,7 +109,7 @@ class User {
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
       .mergeMap(val => {
-        return UserKeycloakDA.getRoles$(
+        return UserDA.getRoles$(
           authToken.realm_access.roles
         );
       })
@@ -132,7 +136,7 @@ class User {
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
       .mergeMap(val => {
-        return UserKeycloakDA.getUserRoleMapping$(
+        return UserDA.getUserRoleMapping$(
           userId,
           authToken.realm_access.roles
         );
@@ -156,7 +160,7 @@ class User {
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
       .mergeMap(val => {
-        return UserKeycloakDA.getUserCount$();
+        return UserDA.getUserCount$();
       })
       .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
       .catch(err => this.handleError$(err));
@@ -235,15 +239,17 @@ class User {
    * @param {string} authToken JWT token
    */
   createUser$(data, authToken) {
+    const id = uuidv4();
     //Verify if all of the info that was enter is valid
     return UserValidatorHelper.validateUserCreation$(data, authToken)
       .mergeMap(user => {
+        user._id = id;
         return eventSourcing.eventStore.emitEvent$(
           new Event({
             eventType: "UserCreated",
             eventTypeVersion: 1,
             aggregateType: "User",
-            aggregateId: user.username,
+            aggregateId: user._id,
             data: user,
             user: authToken.preferred_username
           })
@@ -252,7 +258,7 @@ class User {
       .map(result => {
         return {
           code: 200,
-          message: `User with id: ${data.args.username} has been created`
+          message: `User with id: ${id} has been created`
         };
       })
       .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
@@ -274,7 +280,7 @@ class User {
             eventType: "UserGeneralInfoUpdated",
             eventTypeVersion: 1,
             aggregateType: "User",
-            aggregateId: user.id,
+            aggregateId: user._id,
             data: user,
             user: authToken.preferred_username
           })
@@ -300,12 +306,13 @@ class User {
   updateUserState$(data, authToken) {
     return UserValidatorHelper.validateUpdateUserState$(data, authToken)
       .mergeMap(user => {
+        console.log('Emit updateUserState => ', user);
         return eventSourcing.eventStore.emitEvent$(
           new Event({
             eventType: user.state ? "UserActivated" : "UserDeactivated",
             eventTypeVersion: 1,
             aggregateType: "User",
-            aggregateId: user.id,
+            aggregateId: user._id,
             data: user,
             user: authToken.preferred_username
           })
@@ -322,6 +329,29 @@ class User {
   }
 
   /**
+   * Create the user auth
+   *
+   * @param {*} data args that contain the user ID
+   * @param {string} jwt JWT token
+   */
+  createUserAuth$(data, authToken) {
+    console.log('createUserAuth --- ');
+    //Checks if the user that is performing this actions has the needed role to execute the operation.
+    return UserValidatorHelper.validateCreateUserAuth$(data, authToken)
+    .mergeMap(user => {
+      return UserDA.createUserKeycloak$(user.id, user.password);
+    })
+    .map(result => {
+      return {
+        code: 200,
+        message: `User auth of the user with id: ${data.args.userId} has been created`
+      };
+    })
+    .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
+    .catch(err => this.handleError$(err));
+  }
+
+  /**
    * Updates the user general info
    *
    * @param {*} data args that contain the user ID
@@ -331,7 +361,7 @@ class User {
     //Checks if the user that is performing this actions has the needed role to execute the operation.
     return UserValidatorHelper.validatePasswordReset$(data, authToken)
       .mergeMap(user => {
-        return UserKeycloakDA.resetUserPassword$(user.id, user.password);
+        return UserDA.resetUserPassword$(user.id, user.password);
       })
       .map(result => {
         return {
@@ -373,7 +403,9 @@ class User {
 
   //#endregion
 }
-
+/**
+ * @returns {User}
+ */
 module.exports = () => {
   if (!instance) {
     instance = new User();

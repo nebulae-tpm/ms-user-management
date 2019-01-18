@@ -14,6 +14,7 @@ import {
   getRoles,
   getUserRoleMapping,
   createUser,
+  createUserAuth,
   updateUserGeneralInfo,
   updateUserState,
   resetUserPassword,
@@ -49,15 +50,15 @@ export class UserFormService {
   // }
 
   /**
-   * Gets the users by its username
-   * @param username Username of the user
+   * Gets the users by its id
+   * @param id User ID
    * @param businessId Id of the business to which the user belongs
    */
-  getUser$(username, businessId) {
+  getUser$(id, businessId) {
     return this.gateway.apollo.query<any>({
       query: getUser,
       variables: {
-        username: username,
+        id: id,
         businessId: businessId
       },
       fetchPolicy: "network-only",
@@ -144,21 +145,11 @@ export class UserFormService {
    * @param businessId Id of the business to which the user belongs
    */
   createUser$(user, businessId): Observable<any> {
-    const userInput = {
-      username: user.username,
-      name: user.name,
-      lastname: user.lastname,
-      documentType: user.documentType,
-      documentId: user.documentId,
-      email: user.email,
-      phone: user.phone,
-      state: user.state
-    };
 
     return this.gateway.apollo.mutate<any>({
       mutation: createUser,
       variables: {
-        input: userInput,
+        input: user,
         businessId: businessId
       },
       errorPolicy: "all"
@@ -171,22 +162,15 @@ export class UserFormService {
    * @param user New general info of the user
    * @param businessId Id of the business to which the user belongs
    */
-  updateUser$(userId, user, businessId): Observable<any> {
+  updateUserGeneralInfo$(userId, user): Observable<any> {
     const userInput = {
-      username: user.username,
-      name: user.name,
-      lastname: user.lastname,
-      documentType: user.documentType,
-      documentId: user.documentId,
-      email: user.email,
-      phone: user.phone
+      generalInfo: user.generalInfo
     };
-
+console.log('FE updateUserGeneralInfo -> ', userInput);
     return this.gateway.apollo.mutate<any>({
       mutation: updateUserGeneralInfo,
       variables: {
         userId: userId,
-        businessId: businessId,
         input: userInput
       },
       errorPolicy: "all"
@@ -214,8 +198,33 @@ export class UserFormService {
   }
 
   /**
+   * Create auth for the user.
+   * @param userId userId
+   * @param userPassword Password object
+   * @param userPassword.username username
+   * @param userPassword.password new password
+   * @param userPassword.temporary Booleand that indicates if the password is temporal
+   */
+  createUserAuth$(userId, userPassword): Observable<any> {
+    const userPasswordInput = {
+      password: userPassword.password,
+      temporary: userPassword.temporary || false
+    };
+
+    return this.gateway.apollo.mutate<any>({
+      mutation: createUserAuth,
+      variables: {
+        userId: userId,
+        username: userPassword.username,
+        input: userPasswordInput
+      },
+      errorPolicy: "all"
+    });
+  }
+
+  /**
    * Resets the user password.
-   * @param userId id of the user 
+   * @param userId id of the user
    * @param userPassword new password
    * @param businessId Id of the business to which the user belongs
    */

@@ -1,7 +1,7 @@
 "use strict";
 
 const Rx = require("rxjs");
-const UserKeycloakDA = require("../data/UserKeycloakDA");
+const UserDA = require("../data/UserDA");
 const broker = require("../tools/broker/BrokerFactory")();
 const MATERIALIZED_VIEW_TOPIC = "emi-materialized-view-updates";
 
@@ -13,57 +13,60 @@ let instance;
 class UserEventConsumer {
   constructor() {}
 
+
   /**
    * Persists the user on the materialized view according to the received data from the event store.
    * @param {*} userCreatedEvent User created event
    */
   handleUserCreated$(userCreatedEvent) {
-    const user = userCreatedEvent.data;    
+    const user = userCreatedEvent.data;
 
-    return UserKeycloakDA.getUsers$(0, 1, undefined, user.businessId, undefined, undefined)
+    return UserDA.getUsers$(0, 1, undefined, user.businessId)
+    //First user of a business must be created with the preconfigured roles 
     .mergeMap(users => {
-      console.log('Amount users => ', users);
-      
-      return UserKeycloakDA.createUser$(user)
-      .mergeMap(user=>{
-        //If this is the first user of a business, the user must be preconfigured with the roles specified in the envirment variable and a random password
-        if(users.length == 0){
-          const ROLE_FIRST_USER_ASSIGN = JSON.parse(process.env.ROLE_FIRST_USER_ASSIGN);
-          return UserKeycloakDA.getRolesKeycloak$()
-          .mergeMap(roles => {
+      if(users.length == 0){
+        const ROLE_FIRST_USER_ASSIGN = JSON.parse(process.env.ROLE_FIRST_USER_ASSIGN);
+        user.roles = ROLE_FIRST_USER_ASSIGN ? ROLE_FIRST_USER_ASSIGN.roles: [];    
+      }            
+      return Rx.Observable.of(user);          
+    })
+    .mergeMap(user => {
+      console.log('Create user => ', user);
+      return UserDA.createUser$(user)
+      // .mergeMap(user=>{
+      //   //If this is the first user of a business, the user must be preconfigured with the roles specified in the envirment variable and a random password
+      //   if(users.length == 0){
+      //     const ROLE_FIRST_USER_ASSIGN = JSON.parse(process.env.ROLE_FIRST_USER_ASSIGN);
+      //     return UserDA.getRolesKeycloak$()
+      //     .mergeMap(roles => {
+      //       const rolesToAdd = roles.map(role => {
+      //         return {
+      //           id: role.id,
+      //           name: role.name
+      //         }
+      //       }).filter(role => ROLE_FIRST_USER_ASSIGN.roles.includes(role.name));
 
-            const rolesToAdd = roles.map(role => {
-              return {
-                id: role.id,
-                name: role.name
-              }
-            }).filter(role => ROLE_FIRST_USER_ASSIGN.roles.includes(role.name));
+      //       const randomPassword = {
+      //         temporary: true,
+      //         value: (Math.floor(Math.random()*90000000) + 10000000)+''
+      //       };
 
-            const randomPassword = {
-              temporary: true,
-              value: (Math.floor(Math.random()*90000000) + 10000000)+''
-            };
+      //       console.log('randomPassword => ', randomPassword);
 
-            console.log('randomPassword => ', randomPassword);
+      //       //Adds default roles and temporal password
+      //       return Rx.Observable.forkJoin(
+      //         UserDA.addRolesToTheUser$(user.id, rolesToAdd),
+      //         UserDA.resetUserPassword$(user.id, randomPassword)  
+      //       ).mapTo(user)
 
-            //Adds default roles and temporal password
-            return Rx.Observable.forkJoin(
-              UserKeycloakDA.addRolesToTheUser$(user.id, rolesToAdd),
-              UserKeycloakDA.resetUserPassword$(user.id, randomPassword)  
-            ).mapTo(user)
-
-            //return UserKeycloakDA.addRolesToTheUser$(user.id, rolesToAdd).mapTo(user)
-          })
-        }
-        return Rx.Observable.of(user);
-      });
+      //       //return UserDA.addRolesToTheUser$(user.id, rolesToAdd).mapTo(user)
+      //     })
+      //   }
+      //   return Rx.Observable.of(user);
+      // });
     })
     .mergeMap(result => {
-      return broker.send$(
-        MATERIALIZED_VIEW_TOPIC,
-        `UserUpdatedSubscription`,
-        UserKeycloakDA.getUserByUserId$(user.id)
-      );
+      return broker.send$(MATERIALIZED_VIEW_TOPIC, `UserUpdatedSubscription`, result.ops[0]);
     });
   }
 
@@ -72,15 +75,17 @@ class UserEventConsumer {
    * @param {*} userAttributesUpdatedEvent user general info updated event
    */
   handleUserGeneralInfoUpdated$(userGeneralInfoUpdatedEvent) {
+    console.log('handleUserGeneralInfoUpdated => ', userGeneralInfoUpdatedEvent);
     const userGeneralInfo = userGeneralInfoUpdatedEvent.data;
-    return UserKeycloakDA.updateUserGeneralInfo$(
-      userGeneralInfo.id,
-      userGeneralInfo
+    return UserDA.updateUserGeneralInfo$(
+      userGeneralInfo._id,
+      userGeneralInfo.generalInfo
     ).mergeMap(result => {
+      console.log('update result => ', result);
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
-        UserKeycloakDA.getUserByUserId$(userGeneralInfo.id)
+        UserDA.getUserByUserId$(userGeneralInfo.id)
       );
     });
   }
@@ -91,15 +96,15 @@ class UserEventConsumer {
    */
   handleUserState$(userStateEvent) {
     const userState = userStateEvent.data;
-    return UserKeycloakDA.updateUserState$(
-      userState.id,
+    return UserDA.updateUserState$(
+      userState._id,
       userState.state
     )
     .mergeMap(result => {
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
-        UserKeycloakDA.getUserByUserId$(userState.id)
+        UserDA.getUserByUserId$(userState.id)
       );
     })
     ;
@@ -111,14 +116,14 @@ class UserEventConsumer {
    */
   handleUserPasswordChanged$(userPasswordChangedEvent) {
     const userPassword = userPasswordChangedEvent.data;
-    return UserKeycloakDA.updateUserPassword$(
+    return UserDA.updateUserPassword$(
       userPasswordChangedEvent.aid,
       userPassowrd
     ).mergeMap(result => {
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
-        UserKeycloakDA.getUserByUserId$(userPasswordChangedEvent.aid)
+        UserDA.getUserByUserId$(userPasswordChangedEvent.aid)
       );
     });
   }
@@ -130,14 +135,14 @@ class UserEventConsumer {
  */
   handleUserRolesAdded$(userRolesAddedEvent) {
     const data = userRolesAddedEvent.data;
-    return UserKeycloakDA.addRolesToTheUser$(
+    return UserDA.addRolesToTheUser$(
       userRolesAddedEvent.aid,
       data.userRoles.roles
     ).mergeMap(result => {
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
-        UserKeycloakDA.getUserByUserId$(userRolesAddedEvent.aid)
+        UserDA.getUserByUserId$(userRolesAddedEvent.aid)
       );
     });
   }
@@ -148,14 +153,14 @@ class UserEventConsumer {
  */
 handleUserRolesRemoved$(userRolesRemovedEvent) {
   const data = userRolesRemovedEvent.data;
-  return UserKeycloakDA.removeRolesFromUser$(
+  return UserDA.removeRolesFromUser$(
     userRolesRemovedEvent.aid,
     data.userRoles.roles
   ).mergeMap(result => {
     return broker.send$(
       MATERIALIZED_VIEW_TOPIC,
       `UserUpdatedSubscription`,
-      UserKeycloakDA.getUserByUserId$(userRolesRemovedEvent.aid)
+      UserDA.getUserByUserId$(userRolesRemovedEvent.aid)
     );
   });
 }

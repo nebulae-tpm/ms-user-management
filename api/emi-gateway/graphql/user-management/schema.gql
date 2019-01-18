@@ -7,16 +7,27 @@ enum DocumentType {
 "User type"
 type User {
   "User ID"
-  id: ID!
-  "Username"
-  username: String!
+  _id: ID!
   "User general info"
   generalInfo: UserGeneralInfo
   "User state"
-  state: Boolean!
+  state: Boolean
+  "Data about auth"
+  auth: UserAuth
+  "Roles assigned to the user"
+  roles: [String]
+  "business id of the user"
+  businessId: String!
 }
 
-"user general info"
+type UserAuth {
+  "username"
+  username: String!
+  "User keycloak ID"
+  userKeycloakId: String!
+}
+
+"User general info"
 type UserGeneralInfo {
   "Name"
   name: String
@@ -33,20 +44,17 @@ type UserGeneralInfo {
 }
 
 type UserRole {
-  id: ID!
-  name: String!  
-}
-
-type Role {
-  "Role ID"
   id: String!
-  "Role name"
   name: String!  
 }
 
 input UserInput {
-  "Username"
-  username: String!
+  generalInfo: UserGeneralInfoInput!
+  "User state"
+  state: Boolean
+}
+
+input UserGeneralInfoInput {
   "Name"
   name: String!
   "Lastname"
@@ -56,11 +64,18 @@ input UserInput {
   "Document ID"
   documentId: String
   "Email"
-  email: String
+  email: String!
   "Phone"
-  phone: String
-  "User state"
-  state: Boolean
+  phone: String!
+}
+
+input AuthInput {
+  "username"
+  username: String!
+  "User password"
+  password: String!
+  "User temporary"
+  temporary: Boolean!
 }
 
 input UserPasswordInput {
@@ -89,22 +104,24 @@ type CommandResponse {
 
 type Query {
   "Gets the users "
-  getUsers(page: Int!, count: Int!, searchFilter: String, businessId: String!): [User]
+  getUsers(page: Int!, count: Int!, searchFilter: String, businessId: String): [User]
   "Gets a user by its username"
-  getUser(username: String!, businessId: String!): User
+  getUser(id: String!, businessId: String): User
   "Gets user role mapping"
   getUserRoleMapping(userId: ID!, businessId: String!): [UserRole]
   "Gets roles that the petitioner can assign to another users according to its role"
-  getRoles: [Role]
+  getRoles: [UserRole]
 }
 
 type Mutation {
   "Create a new user"
   createUser(businessId: String!, input: UserInput): CommandResponse
   "Updates the user according to the ID"
-  updateUserGeneralInfo(userId: ID!, businessId: String!, input: UserInput): CommandResponse
+  updateUserGeneralInfo(userId: ID!, input: UserInput): CommandResponse
   "Updates the user state"
-  updateUserState(userId: ID!, username: String!, businessId: String!, state: Boolean!): CommandResponse
+  updateUserState(userId: ID!, username: String!, state: Boolean!): CommandResponse
+  "Creates auth for the user"
+  createUserAuth(userId: ID!, username: String!, input: AuthInput): CommandResponse
   "Changes user password"
   resetUserPassword(userId: ID!, businessId: String!, input: UserPasswordInput): CommandResponse  
   "Adds the roles to the user"

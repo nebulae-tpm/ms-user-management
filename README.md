@@ -272,7 +272,7 @@ docker-compose up
 #### Create the initial user:
 * select the DEV_tpm keycloak realm and click on the users option from the left panel.
 * select 'add user' option , fill the needed fields and enable the 'Email Verified' option.
-* set a password by editing the user, open the 'credentials' tabs, type a new password and deselect the 'Temporary' option
+* set a password by editing the user, open the 'auth' tabs, type a new password and deselect the 'Temporary' option
 
 
 Add the **developer** and **operator** rol to your user:

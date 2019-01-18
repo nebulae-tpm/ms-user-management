@@ -6,7 +6,7 @@ const { CustomError, DefaultError } = require("../../tools/customError");
 const {
   PERMISSION_DENIED_ERROR_CODE,
   INTERNAL_SERVER_ERROR_CODE,
-  INVALID_USER_CREDENTIALS_OR_TOKEN_ERROR_CODE
+  INVALID_USER__OR_TOKEN_ERROR_CODE
 } = require("../../tools/ErrorCodes");
 const context = "User-management"
 
@@ -33,7 +33,7 @@ class TokenCQRS {
       .catch(err => {
         if(err.error == 'invalid_grant'){
           return this.createCustomError$(
-            INVALID_USER_CREDENTIALS_OR_TOKEN_ERROR_CODE,
+            INVALID_USER__OR_TOKEN_ERROR_CODE,
             'getToken'
           );
         }else{

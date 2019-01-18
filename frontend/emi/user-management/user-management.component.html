@@ -13,53 +13,28 @@
         <span class="logo-text h1" *fuseIfOnDom [@animate]="{ value: '*', params: { delay: '100ms', x: '-25px' } }">{{
           "USER.USER" | translate }}</span>
       </div>
-                
+
       <!-- / APP TITLE -->
-    
+
       <!-- SEARCH USER FILTER -->
       <div class="search-input-wrapper mx-12 m-md-0" fxLayoutAlign="start center" fxFlex="70">
         <form fxLayout="row wrap" fxFlex="100">
-      
-          <div class="mr-8" fxLayoutAlign="start center" fxFlex>
-            <label for="searchBusiness" class="mr-8" *ngIf="isAdmin">
-              <mat-icon class="secondary-text">search</mat-icon>
-            </label>
-      
-            <mat-form-field floatPlaceholder="never" fxFlex="1 0 auto">
-              <input id="searchBusiness" matInput placeholder="{{'USER.SELECT_BUSINESS' | translate}}" [matAutocomplete]="auto"
-                [(value)]="selectedBusinessData" [formControl]="businessFilterCtrl" *ngIf="isAdmin">
-              <button mat-button *ngIf="false" matSuffix mat-icon-button aria-label="Clear" (click)="onSelectBusinessEvent(undefined)">
-                <mat-icon>close</mat-icon>
-              </button>
-      
-              <input id="myBusiness" matInput placeholder="{{'USER.MY_BUSINESS' | translate}}" [matAutocomplete]="auto"
-                [(value)]="selectedBusinessData" [formControl]="businessFilterCtrl" *ngIf="!isAdmin" readonly="true" />
-            </mat-form-field>
-      
-            <mat-autocomplete #auto="matAutocomplete" (optionSelected)='onSelectBusinessEvent($event.option.value)'
-              [displayWith]="displayFn">
-              <mat-option *ngFor="let business of businessQueryFiltered$ | async" [value]="business">
-                {{ business.generalInfo.name }} (ID: {{ business._id }})
-              </mat-option>
-            </mat-autocomplete>
-      
-          </div>
-      
+
           <div fxLayoutAlign="start center" fxFlex>
             <label for="search" class="mr-8">
               <mat-icon class="secondary-text">search</mat-icon>
             </label>
-      
+
             <mat-form-field floatPlaceholder="never" fxFlex="1 0 auto">
               <input id="search" matInput #filter placeholder="{{'USER.SEARCH_USER' | translate}}" />
             </mat-form-field>
           </div>
-      
+
         </form>
       </div>
       <!-- / SEARCH USER FILTER -->
-    
-      <button mat-raised-button class="mat-white-bg" [routerLink]="'user/' + selectedBusinessId + '/new'"  [disabled]="selectedBusinessId == null">
+
+      <button mat-raised-button class="mat-white-bg" (click)="goToDetail()">
         <span>{{ "USER.ADD_USER" | translate }}</span>
       </button>
     </div>
@@ -71,15 +46,6 @@
         <div fxLayout="column" fxFlex="100" fxFlex.gt-sm="100" fxFlex.gt-md="100">
           <mat-table id="user-table" class="item-table" #table [dataSource]="dataSource" matSort [@animateStagger]="{ value: '50' }"
             fusePerfectScrollbar>
-            <!-- Username Column -->
-            <ng-container cdkColumnDef="username">
-              <mat-header-cell mat-sort-header="username" *cdkHeaderCellDef>{{
-                "USER.USERNAME" | translate
-                }}</mat-header-cell>
-              <mat-cell *cdkCellDef="let user">
-                <p class="text-truncate">{{ user.username }}</p>
-              </mat-cell>
-            </ng-container>
 
             <!-- Fullname Column -->
             <ng-container cdkColumnDef="fullname">
@@ -113,7 +79,7 @@
 
             <!-- Name Column -->
             <ng-container cdkColumnDef="doc_id">
-              <mat-header-cell mat-sort-header="doc_id" *cdkHeaderCellDef>{{ "USER.DOC_ID" | translate }}                
+              <mat-header-cell mat-sort-header="doc_id" *cdkHeaderCellDef>{{ "USER.DOC_ID" | translate }}
               </mat-header-cell>
               <mat-cell *cdkCellDef="let user">
                 <p class="text-truncate">{{ user.generalInfo.documentId }}</p>
@@ -131,6 +97,16 @@
               </mat-cell>
             </ng-container>
 
+            <!-- Username Column -->
+            <ng-container cdkColumnDef="username">
+              <mat-header-cell mat-sort-header="username" *cdkHeaderCellDef>{{
+                "USER.USERNAME" | translate
+                }}</mat-header-cell>
+              <mat-cell *cdkCellDef="let user">
+                <p class="text-truncate">{{ user.auth ? user.auth.username : ''}}</p>
+              </mat-cell>
+            </ng-container>
+
             <!--
               Roles Column
               <ng-container cdkColumnDef="roles">
@@ -143,7 +119,7 @@
             -->
             <mat-header-row *cdkHeaderRowDef="displayedColumns"></mat-header-row>
 
-            <mat-row *cdkRowDef="let user; columns: displayedColumns" class="item" matRipple [routerLink]="'user/' + selectedBusinessId + '/' + user.username">
+            <mat-row *cdkRowDef="let user; columns: displayedColumns" class="item" matRipple [routerLink]="'user/' + selectedBusinessId + '/' + user._id">
             </mat-row>
           </mat-table>
 

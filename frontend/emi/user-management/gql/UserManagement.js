@@ -28,10 +28,9 @@ export const getMyBusiness = gql`
 
 //Gets the users filtered by page, count and search filter
 export const getUsers = gql`
-  query getUsers($page: Int!, $count: Int!, $searchFilter: String, $businessId: String!) {
+  query getUsers($page: Int!, $count: Int!, $searchFilter: String, $businessId: String) {
     getUsers(page: $page, count: $count, searchFilter: $searchFilter, businessId: $businessId ){
-      id
-      username
+      _id
       generalInfo{
         name
         lastname
@@ -40,17 +39,22 @@ export const getUsers = gql`
         email
         phone
       }
+      auth{
+        username
+        userKeycloakId
+      }
+      roles
       state
+      businessId
     }
   }
 `;
 
 //Gets the users filtered by page, count and search filter
 export const getUser = gql`
-  query getUser($username: String!, $businessId: String!){
-    getUser(username: $username, businessId: $businessId){
-      id
-      username
+  query getUser($id: String!, $businessId: String){
+    getUser(id: $id, businessId: $businessId){
+      _id
       generalInfo{
         name
         lastname
@@ -59,7 +63,13 @@ export const getUser = gql`
         email
         phone
       }
+      auth{
+        username
+        userKeycloakId
+      }
+      roles
       state
+      businessId
     }
   }
 `;
@@ -113,8 +123,8 @@ export const createUser = gql`
 `;
 
 export const updateUserGeneralInfo = gql`
-  mutation updateUserGeneralInfo($userId: ID!, $businessId: String!, $input: UserInput) {
-    updateUserGeneralInfo(userId: $userId, businessId: $businessId, input: $input) {
+  mutation updateUserGeneralInfo($userId: ID!, $input: UserInput) {
+    updateUserGeneralInfo(userId: $userId, input: $input) {
       code
       message
     }
@@ -122,8 +132,17 @@ export const updateUserGeneralInfo = gql`
 `;
 
 export const updateUserState = gql`
-  mutation updateUserState($userId: ID!, $businessId: String!, $username: String!, $state: Boolean!) {
-    updateUserState(userId: $userId, businessId: $businessId, username: $username, state: $state) {
+  mutation updateUserState($userId: ID!, $username: String!, $state: Boolean!) {
+    updateUserState(userId: $userId, username: $username, state: $state) {
+      code
+      message
+    }
+  }
+`;
+
+export const createUserAuth = gql`
+  mutation createUserAuth($userId: ID!, $username: String!, $input: AuthInput) {
+    createUserAuth(userId: $userId, username: $username, input: $input) {
       code
       message
     }
