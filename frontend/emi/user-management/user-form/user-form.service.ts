@@ -206,7 +206,7 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
    * @param userPassword.temporary Booleand that indicates if the password is temporal
    */
   createUserAuth$(userId, userPassword): Observable<any> {
-    const userPasswordInput = {
+    const authInput = {
       password: userPassword.password,
       temporary: userPassword.temporary || false
     };
@@ -216,7 +216,7 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
       variables: {
         userId: userId,
         username: userPassword.username,
-        input: userPasswordInput
+        input: authInput
       },
       errorPolicy: "all"
     });
