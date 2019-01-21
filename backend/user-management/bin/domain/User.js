@@ -305,6 +305,7 @@ class User {
    */
   updateUserState$(data, authToken) {
     return UserValidatorHelper.validateUpdateUserState$(data, authToken)
+      //.mergeM
       .mergeMap(user => {
         console.log('Emit updateUserState => ', user);
         return eventSourcing.eventStore.emitEvent$(
@@ -338,8 +339,34 @@ class User {
     console.log('createUserAuth --- ');
     //Checks if the user that is performing this actions has the needed role to execute the operation.
     return UserValidatorHelper.validateCreateUserAuth$(data, authToken)
-    .mergeMap(user => {
-      return UserDA.createUserKeycloak$(user.id, user.password);
+    .mergeMap(user => UserDA.getUserById$(user._id))
+    .mergeMap(userMongo => {
+      return UserDA.createUserKeycloak$(userMongo, data.args.input)
+      .mergeMap(userKeycloak => {      
+        const password = {
+          temporary: data.args.input.temporary || false,
+          value: data.args.input.password
+        }
+        console.log('1 userKeycloak => ', userKeycloak, password);
+
+        return UserDA.resetUserPassword$(userKeycloak.id, password).mapTo(userKeycloak);
+      })
+      .mergeMap(userKeycloak => {
+        console.log('Emit UserAuthCreated => ', userKeycloak);
+        return eventSourcing.eventStore.emitEvent$(
+          new Event({
+            eventType: "UserAuthCreated",
+            eventTypeVersion: 1,
+            aggregateType: "User",
+            aggregateId: userMongo._id,
+            data: {
+              userKeycloakId: userKeycloak.id,
+              username: userKeycloak.username
+            },
+            user: authToken.preferred_username
+          })
+        );
+      })
     })
     .map(result => {
       return {
@@ -360,8 +387,21 @@ class User {
   resetUserPassword$(data, authToken) {
     //Checks if the user that is performing this actions has the needed role to execute the operation.
     return UserValidatorHelper.validatePasswordReset$(data, authToken)
-      .mergeMap(user => {
-        return UserDA.resetUserPassword$(user.id, user.password);
+      .megeMap(user => {
+        return UserDA.resetUserPassword$(user.userKeycloakId, user.password)
+        .mergeMap(() => {
+          console.log('Emit UserAuthPasswordUpdated => ', user);
+          return eventSourcing.eventStore.emitEvent$(
+            new Event({
+              eventType: "UserAuthPasswordUpdated",
+              eventTypeVersion: 1,
+              aggregateType: "User",
+              aggregateId: user._id,
+              data: {},
+              user: authToken.preferred_username
+            })
+          );
+        })
       })
       .map(result => {
         return {

@@ -207,6 +207,7 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
    */
   createUserAuth$(userId, userPassword): Observable<any> {
     const authInput = {
+      username: userPassword.username,
       password: userPassword.password,
       temporary: userPassword.temporary || false
     };

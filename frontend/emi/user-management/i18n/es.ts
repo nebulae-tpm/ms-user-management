@@ -60,7 +60,8 @@ export const locale = {
         'PLATFORM-ADMIN': 'Administrador plataforma',
         'SYSADMIN': 'Administrador de sistema'
       },
-      CLOSE: 'Cerrar'
+      CLOSE: 'Cerrar',
+      RESET_PASSWORD: 'Restablecer contraseña'
     },
     ERRORS: {
       15001: 'Error interno de servidor',

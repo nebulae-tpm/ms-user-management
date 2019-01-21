@@ -192,6 +192,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Creates the user auth reactive form
    */
   createUserAuthForm() {
+    console.log('createUserAuthForm => ', this.user);
     return this.formBuilder.group(
       {
         username: [
@@ -490,9 +491,9 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Create the user auth on Keycloak
    */
-  createUserAuth() {
-    console.log('createUserAuth -***');
+  createUserAuth() {    
     const data = this.userAuthForm.getRawValue();
+    console.log('createUserAuth -***', data);
 
     this.userFormService
       .createUserAuth$(this.user._id, data)

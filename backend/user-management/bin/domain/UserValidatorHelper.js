@@ -65,7 +65,7 @@ class UserValidatorHelper {
         })
         //Checks if the email already was used
         .mergeMap(user => {
-          return this.checkEmailExistKeycloakOrMongo$(user, user.generalInfo.email);
+          return this.checkEmailExistKeycloakOrMongo$(null, user.generalInfo.email);
         })
     );
   }
@@ -101,7 +101,15 @@ class UserValidatorHelper {
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken, method))
 
-        .mergeMap(user => this.checkEmailExistKeycloakOrMongo$(user, user.generalInfo.email))
+        .mergeMap(user => {
+          return UserDA.getUserById$(data.args.userId)
+          .mergeMap(userMongo => 
+            this.checkEmailExistKeycloakOrMongo$(
+              userMongo.auth ? userMongo.auth.userKeycloakId: undefined, 
+              user.generalInfo.email
+            ).mapTo(user)
+          )
+        })
     );
   }
 
@@ -240,32 +248,20 @@ class UserValidatorHelper {
           if(!user){
             //TODO: ERROR
           }
+
+          if(user.username){
+            //TODO: ERROR no puede crear usuario
+          }
+
           console.log('USER => ', user);
           const authInput = data.args ? data.args.input:undefined;
 
-          if (!user.id || !authInput || !authInput.password) {
+          if (!user._id || !authInput || !authInput.username || !authInput.password) {
             return this.createCustomError$(
               USER_MISSING_DATA_ERROR_CODE,
               method
             );
           }
-
-          const userKeycloak = {
-            username: user.username,
-            firstName: user.name,
-            lastName: user.lastname,
-            attributes: attributes,
-            email: user.email,
-            enabled: user.state,
-            id: user._id,
-            credentials: [{
-              temporary: userPassword.temporary || false,
-              value: userPassword.password
-            }],
-            businessId: user.businessId
-          };
-
-          console.log('userKeycloak => ', userKeycloak);
 
           this.checkBusiness(user, roles, authToken);
           console.log("resetPassword => ", user);
@@ -283,15 +279,17 @@ class UserValidatorHelper {
     //Validate if the user that is performing the operation has the required role.
     return (this.checkRole$(authToken, method)
         .mergeMap(roles => {
+          const businessId = data.args ? (data.args.businessId ? data.args.businessId.trim(): undefined) : undefined
           return Rx.Observable.of(roles)
-          .mergeMap(() => UserDA.getUserById$(data.args.userId))
+          .mergeMap(() => UserDA.getUserById$(data.args.userId, businessId))
           .map(user => [roles, user])
         })
-        .mergeMap(([roles, user1]) => {
+        .mergeMap(([roles, userMongo]) => {
           const userPassword = data.args ? data.args.input:undefined;
 
           const user = {
-            id: data.args ? data.args.userId : undefined,
+            _id: data.args ? data.args.userId : undefined,
+            userKeycloakId: userMongo.auth.userKeycloakId,
             password: {
               temporary: userPassword.temporary || false,
               value: userPassword.password
@@ -299,7 +297,7 @@ class UserValidatorHelper {
             businessId: data.args ? (data.args.businessId ? data.args.businessId.trim(): undefined) : undefined
           };
 
-          if (!user.id || !userPassword || !userPassword.password) {
+          if (!user._id || !userPassword || !userPassword.password) {
             return this.createCustomError$(
               USER_MISSING_DATA_ERROR_CODE,
               method
@@ -309,17 +307,17 @@ class UserValidatorHelper {
           this.checkBusiness(user, roles, authToken);
           console.log("resetPassword => ", user);
 
-          return Rx.Observable.of(user);
-        })
-        .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
-        //Checks if the user that is being updated exists on the same business of the user that is performing the operation
-        .mergeMap(user => {
+          //Checks if the user that is being updated exists on the same business of the user that is performing the operation
           return this.checkIfUserBelongsToTheSameBusiness$(
             user,
             authToken,
-            method
+            method,
+            roles
           );
+          //return Rx.Observable.of(user);
         })
+        .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))        
+
     );
   }
 
@@ -331,9 +329,8 @@ class UserValidatorHelper {
       this.checkRole$(authToken, method)
         .mergeMap(roles => {
           const user = {
-            id: !data.args ? undefined : data.args.userId,
+            _id: !data.args ? undefined : data.args.userId,
             userRoles: !data.args ? undefined : data.args.input,
-            businessId: !data.args ? undefined : (data.args.businessId ? data.args.businessId.trim(): undefined)
           };
           if (!user.id || !user.userRoles) {
             return this.createCustomError$(
@@ -358,8 +355,8 @@ class UserValidatorHelper {
    * @returns error if its trying to update its user
    */
   static checkIfUserIsTheSameUserLogged$(user, authToken, method) {
-    console.log('checkIfUserIsTheSameUserLogged => ', (user.id == authToken.sub), user, authToken.sub);
-    if (user.id == authToken.sub) {
+    console.log('checkIfUserIsTheSameUserLogged => ', (user._id == authToken.sub), user, authToken.sub);
+    if (user._id == authToken.sub) {
       return this.createCustomError$(USER_UPDATE_OWN_INFO_ERROR_CODE, method);
     }
     return Rx.Observable.of(user);
@@ -401,7 +398,7 @@ class UserValidatorHelper {
     );
   }
 
-  static checkEmailExistKeycloakOrMongo$(user, email) {
+  static checkEmailExistKeycloakOrMongo$(userKeycloakId, email) {
     return Rx.Observable.of(email)
     .concatMap(email => Rx.Observable.concat(
       UserDA.getUserKeycloak$(null, email),
@@ -411,22 +408,21 @@ class UserValidatorHelper {
       console.log('keycloakResult => ', keycloakResult);
       console.log('mongoResult => ', mongoResult);
 
-      console.log('user.auth => ', user.auth);
-      if (keycloakResult && (!user.auth || user.auth.userKeycloakId != keycloakResult.id)) {
+      if (keycloakResult && (!userKeycloakId || userKeycloakId != keycloakResult.id)) {
         return this.createCustomError$(
           EMAIL_ALREADY_USED_ERROR_CODE,
           'Error'
         );
       }
       console.log('checkEmailExistKeycloakOrMongo1');
-       if (mongoResult && mongoResult.length > 0 && (!user.auth || user.auth.userKeycloakId != mongoResult[0].id)) {
+       if (mongoResult && mongoResult.length > 0 && (!userKeycloakId || userKeycloakId != mongoResult[0].id)) {
         return this.createCustomError$(
           EMAIL_ALREADY_USED_ERROR_CODE,
           'Error'
         );
       }
       console.log('checkEmailExistKeycloakOrMongo2');
-      return Rx.Observable.of(user);
+      return Rx.Observable.of(userKeycloakId);
     });
 
   }

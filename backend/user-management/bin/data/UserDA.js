@@ -20,12 +20,48 @@ class UserDA {
     });
   }
 
+     /**
+    * Adds the specified roles to the user on Keycloak and Mongo
+    * @param {*} userId Id of the user 
+    * @param {*} arrayRoles Roles to be added to the user
+    */
+   static addRolesToTheUser$(userId, userKeycloakId, arrayRoles) {
+
+    return Rx.Observable.from(arrayRoles)
+    .map(role => role.name)
+    .toArray()
+    .mergeMap(rolesMapped => this.addRolesToTheUserMongo$(userId, rolesMapped))
+    .mergeMap(() => this.addRolesToTheUserKeycloak$(userKeycloakId, arrayRoles));
+  }
+
    /**
     * Adds the specified roles to the user
     * @param {*} userId Id of the user 
     * @param {*} arrayRoles Roles to be added to the user
     */
-  static addRolesToTheUser$(userId, arrayRoles) {
+   static addRolesToTheUserMongo$(userId, arrayRoles) {
+
+    const collection = mongoDB.db.collection(CollectionName);
+
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId },
+          {
+            $set: {roles: arrayRoles}
+          },{
+            returnOriginal: false
+          }
+        )
+    )
+    .map(result => result && result.value ? result.value : undefined);
+  }
+
+   /**
+    * Adds the specified roles to the user
+    * @param {*} userId Id of the user 
+    * @param {*} arrayRoles Roles to be added to the user
+    */
+  static addRolesToTheUserKeycloak$(userId, arrayRoles) {
 
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.realms.maps.map(
@@ -41,7 +77,7 @@ class UserDA {
     * @param {*} userId Id of the user 
     * @param {*} arrayRoles Roles to be removed from the user
     */
-   static removeRolesFromUser$(userId, arrayRoles) {
+   static removeRolesFromUserKeycloak$(userId, arrayRoles) {
 
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.realms.maps.unmap(
@@ -75,57 +111,36 @@ class UserDA {
    * Creates a new user on Keycloak
    * @param {*} user user to create
    */
-  static createUserKeycloak$(user) { 
+  static createUserKeycloak$(user, authInput) { 
     const attributes = {};
     attributes["businessId"] = user.businessId;
+    
 
     const userKeycloak = {
-      username: user.username,
-      firstName: user.name,
-      lastName: user.lastname,
+      username: authInput.username,
+      firstName: user.generalInfo.name,
+      lastName: user.generalInfo.lastname,
       attributes: attributes,
-      email: user.email,
+      email: user.generalInfo.email,
       enabled: user.state,
       id: user._id
     };
+
+    console.log('USER =>  => ', user);
+    console.log('createUserKeycloak => ', userKeycloak);
 
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.users.create(
         process.env.KEYCLOAK_BACKEND_REALM_NAME,
         userKeycloak
       )
-    );
+    )
+    .map(user => {
+      console.log('User create keycloak => ', user);
+      return user;
+    });
   }
-  
 
-  // /**
-  //  * Creates a new user on Keycloak
-  //  * @param {*} user user to create
-  //  */
-  // static createUserKeycloak$(user) { 
-  //   const attributes = {};
-  //   attributes["documentType"] = user.documentType;
-  //   attributes["documentId"] = user.documentId;
-  //   attributes["phone"] = user.phone;
-  //   attributes["businessId"] = user.businessId;
-
-  //   const userKeycloak = {
-  //     username: user.username,
-  //     firstName: user.name,
-  //     lastName: user.lastname,
-  //     attributes: attributes,
-  //     email: user.email,
-  //     enabled: user.state,
-  //     id: user.id
-  //   };
-
-  //   return Rx.Observable.defer(() =>
-  //     KeycloakDA.keycloakClient.users.create(
-  //       process.env.KEYCLOAK_BACKEND_REALM_NAME,
-  //       userKeycloak
-  //     )
-  //   );
-  // }
 
    /**
    * Updates the user general info
@@ -133,7 +148,13 @@ class UserDA {
    */
   static updateUserGeneralInfo$(userId, generalInfo) {
     return Rx.Observable.of(generalInfo)
-    .mergeMap(evt => UserDA.updateUserGeneralInfoMongo$(userId, generalInfo));
+    .mergeMap(evt => UserDA.updateUserGeneralInfoMongo$(userId, generalInfo))
+    .mergeMap(user => {
+      if(user && user.auth.userKeycloakId){
+        return UserDA.updateUserGeneralInfoKeycloak$(user.auth.userKeycloakId, generalInfo).mapTo(user)
+      }
+      return Rx.Observable.of(user)
+    });
   }
 
         /**
@@ -162,20 +183,17 @@ class UserDA {
    * @param {*} userId User ID
    * @param {*} user user to updated
    */
-  static updateUserGeneralInfoKeycloak$(userId, user) {
-    const attributes = {};
-    attributes["documentType"] = user.generalInfo.documentType;
-    attributes["documentId"] = user.generalInfo.documentId;
-    attributes["phone"] = user.generalInfo.phone;
-    attributes["businessId"] = user.businessId;
+  static updateUserGeneralInfoKeycloak$(userId, generalInfo) {
+    //const attributes = {};
+    //attributes["businessId"] = user.businessId;
 
     const userKeycloak = {
       id: userId,
-      username: user.username,
-      firstName: user.generalInfo.name,
-      lastName: user.generalInfo.lastname,
-      attributes: attributes,
-      email: user.generalInfo.email
+      //username: user.auth.username,
+      firstName: generalInfo.name,
+      lastName: generalInfo.lastname,
+      //attributes: attributes,
+      email: generalInfo.email
     };
 
     return Rx.Observable.defer(() =>
@@ -186,6 +204,29 @@ class UserDA {
     );
   }
 
+/**
+   * Updates the user auth
+   * @param {*} userId User ID
+   * @param {*} userAuth Object
+   * @param {*} userAuth.userKeycloakId user keycloak ID
+   * @param {*} userAuth.username username
+   */
+  static updateUserAuthMongo$(userId, userAuth) {
+    const collection = mongoDB.db.collection(CollectionName);
+
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId },
+          {
+            $set: {auth: userAuth}
+          },{
+            returnOriginal: false
+          }
+        )
+    )
+    .map(result => result && result.value ? result.value : undefined);
+  }
+
   /**
    * Updates the user state
    * @param {*} userId User ID
@@ -193,7 +234,13 @@ class UserDA {
    */
   static updateUserState$(userId, newUserState) {
     return Rx.Observable.of(newUserState)
-    .mergeMap(evt => UserDA.updateUserStateMongo$(userId, newUserState));
+    .mergeMap(evt => UserDA.updateUserStateMongo$(userId, newUserState))
+    .mergeMap(user => {
+      if(user && user.auth.userKeycloakId){
+        return UserDA.updateUserStateKeycloak$(user.auth.userKeycloakId, newUserState).mapTo(user)
+      }
+      return Rx.Observable.of(user);
+    });
   }
 
   /**
@@ -242,13 +289,17 @@ class UserDA {
    * @param {*} userPassword
    */
   static resetUserPassword$(userId, userPassword) {
+    console.log('resetUserPassword => ', userId, userPassword);
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.users.resetPassword(
         process.env.KEYCLOAK_BACKEND_REALM_NAME,
         userId,
         userPassword
       )
-    );
+    ).catch(error => {
+      console.log('Error => ', error);
+      throw error;
+    });
   }
 
 /**
@@ -599,15 +650,19 @@ class UserDA {
 
 
   /**
-   * get roles from Keycloak
+   * Gets roles from Keycloak according to the roles to filter, 
+   * if no filter is sent then this method will return all of the roles from Keycloak.
+   * @param roles to filter
    */
-  static getRolesKeycloak$(){
+  static getRolesKeycloak$(roles){
     //Gets all of the user roles registered on the Keycloak realm
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.realms.roles.find(
         process.env.KEYCLOAK_BACKEND_REALM_NAME
       )
-    );
+    ).mergeMap(roles => Rx.Observable.from(roles))
+    .filter(roleKeycloak => roles == null || roles.includes(roleKeycloak.name))
+    .toArray();
   }
 }
 

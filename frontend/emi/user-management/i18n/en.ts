@@ -60,7 +60,8 @@ export const locale = {
         'PLATFORM-ADMIN': 'Platform admin',
         'SYSADMIN': 'System admin'
       },
-      CLOSE: 'Close'
+      CLOSE: 'Close',
+      RESET_PASSWORD: 'Reset password'
     }
   },
   ERRORS: {

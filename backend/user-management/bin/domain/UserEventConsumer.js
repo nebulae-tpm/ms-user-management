@@ -90,6 +90,27 @@ class UserEventConsumer {
     });
   }
 
+  /**
+  * updates the user state on the materialized view according to the received data from the event store.
+  * @param {*} userAuthCreatedEvent events that indicates the new state of the user
+  */
+ handleUserAuthCreated$(userAuthCreatedEvent) {
+  console.log('handleUserAuthCreated => ', userAuthCreatedEvent);
+   return UserDA.updateUserAuthMongo$(
+    userAuthCreatedEvent.aid,
+    userAuthCreatedEvent.data
+   )
+   .mergeMap(result => {
+     console.log('result => ', result);
+     return broker.send$(
+       MATERIALIZED_VIEW_TOPIC,
+       `UserUpdatedSubscription`,
+       result
+     );
+   })
+   ;
+ }
+
     /**
    * updates the user state on the materialized view according to the received data from the event store.
    * @param {*} userState events that indicates the new state of the user
@@ -134,15 +155,15 @@ class UserEventConsumer {
  * @param {*} userRolesAddedEvent 
  */
   handleUserRolesAdded$(userRolesAddedEvent) {
-    const data = userRolesAddedEvent.data;
-    return UserDA.addRolesToTheUser$(
-      userRolesAddedEvent.aid,
-      data.userRoles.roles
-    ).mergeMap(result => {
+    const user = userRolesAddedEvent.data;
+    return UserDA.getRolesKeycloak$(user.userRoles.roles)
+    .mergeMap(rolesKeycloak => UserDA.getUserById$(user._id).map(userMongo => [rolesKeycloak, userMongo]))
+    .mergeMap(([rolesKeycloak, userMongo]) => UserDA.addRolesToTheUser$(userMongo._id, userMongo.auth.userKeycloakId, rolesKeycloak))
+    .mergeMap(result => {
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
-        UserDA.getUserByUserId$(userRolesAddedEvent.aid)
+        result
       );
     });
   }

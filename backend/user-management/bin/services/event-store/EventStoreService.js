@@ -139,6 +139,10 @@ class EventStoreService {
         fn: userEventConsumer.handleUserRolesRemoved$,
         obj: userEventConsumer 
       },
+      UserAuthCreated: {
+        fn: userEventConsumer.handleUserAuthCreated$,
+        obj: userEventConsumer 
+      },
     };
   }
 
@@ -154,6 +158,10 @@ class EventStoreService {
       {
         aggregateType: "User",
         eventType: "UserGeneralInfoUpdated"
+      },
+      {
+        aggregateType: "User",
+        eventType: "UserAuthCreated"
       },
       {
         aggregateType: "User",

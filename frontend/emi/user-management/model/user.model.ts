@@ -1,7 +1,6 @@
 export class User{
 
   _id: string;
-  username: string;
   generalInfo: {
     name: string;
     lastname: string;
@@ -21,7 +20,7 @@ export class User{
   constructor(user?){
     user = user || {};
     this._id = user._id;
-    this.username = user.username;
+    this.auth = user.auth || {};
     this.state = user.state;
     this.generalInfo = user.generalInfo || {};
     this.roles = [];
