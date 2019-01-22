@@ -173,17 +173,28 @@ class UserEventConsumer {
  * @param {*} userRolesAddedEvent 
  */
 handleUserRolesRemoved$(userRolesRemovedEvent) {
-  const data = userRolesRemovedEvent.data;
-  return UserDA.removeRolesFromUser$(
-    userRolesRemovedEvent.aid,
-    data.userRoles.roles
-  ).mergeMap(result => {
+  const user = userRolesRemovedEvent.data;
+
+  return UserDA.getRolesKeycloak$(user.userRoles.roles)
+  .mergeMap(rolesKeycloak => UserDA.getUserById$(user._id).map(userMongo => [rolesKeycloak, userMongo]))
+  .mergeMap(([rolesKeycloak, userMongo]) => UserDA.removeRolesFromUser$(userMongo._id, userMongo.auth.userKeycloakId, rolesKeycloak))
+  .mergeMap(result => {
     return broker.send$(
       MATERIALIZED_VIEW_TOPIC,
       `UserUpdatedSubscription`,
-      UserDA.getUserByUserId$(userRolesRemovedEvent.aid)
+      result
     );
   });
+  // return UserDA.removeRolesFromUser$(
+  //   userRolesRemovedEvent.aid,
+  //   data.userRoles.roles
+  // ).mergeMap(result => {
+  //   return broker.send$(
+  //     MATERIALIZED_VIEW_TOPIC,
+  //     `UserUpdatedSubscription`,
+  //     UserDA.getUserByUserId$(userRolesRemovedEvent.aid)
+  //   );
+  // });
 }
 
   

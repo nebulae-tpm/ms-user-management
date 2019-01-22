@@ -99,9 +99,8 @@ export class UserFormService {
    * Adds roles to the specified user
    * @param userId Id of the user to which the roles will be added
    * @param roles Roles to be added
-   * @param businessId Id of the business to which the user belongs
    */
-  addRolesToTheUser$(userId, roles, businessId): Observable<any> {
+  addRolesToTheUser$(userId, roles): Observable<any> {
     const rolesInput = {
       roles: roles
     };
@@ -110,7 +109,6 @@ export class UserFormService {
       mutation: addRolesToTheUser,
       variables: {
         userId: userId,
-        businessId: businessId,
         input: rolesInput
       },
       errorPolicy: "all"
@@ -241,6 +239,26 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
         userId: userId,
         businessId: businessId,
         input: userPasswordInput
+      },
+      errorPolicy: "all"
+    });
+  }
+
+  /**
+   * Update the roles of an user the user password.
+   * @param userId id of the user
+   * @param roles new roles
+   */
+  updateUserRoles$(userId, roles): Observable<any> {
+    const rolesInput = {
+      roles: roles,
+    };
+
+    return this.gateway.apollo.mutate<any>({
+      mutation: resetUserPassword,
+      variables: {
+        userId: userId,
+        input: rolesInput
       },
       errorPolicy: "all"
     });

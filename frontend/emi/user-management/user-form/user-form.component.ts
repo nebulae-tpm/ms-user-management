@@ -2,7 +2,7 @@ import { UserManagementService } from './../user-management.service';
 import { FuseTranslationLoaderService } from "../../../../core/services/translation-loader.service";
 import { TranslateService } from "@ngx-translate/core";
 import { Component, OnDestroy, OnInit, ViewEncapsulation } from "@angular/core";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from "@angular/forms";
 import { Router, ActivatedRoute } from "@angular/router";
 import { locale as english } from "../i18n/en";
 import { locale as spanish } from "../i18n/es";
@@ -62,6 +62,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
     this.userRolesForm = this.createUserRolesForm();
     //this.refreshRoles();
     this.findUser();
+    
   }
 
   getBusinessFiltered$(filterText: String, limit: number): Observable<any[]> {
@@ -139,6 +140,8 @@ export class UserFormComponent implements OnInit, OnDestroy {
         this.userAuthForm = this.createUserAuthForm();
         this.userStateForm = this.createUserStateForm();
         this.userRolesForm = this.createUserRolesForm();
+        //this.loadRoles();
+
         this.refreshRoles();
       });
   }
@@ -229,8 +232,12 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Creates the user roles reactive form
    */
-  createUserRolesForm() {
-    return this.formBuilder.group({});
+  createUserRolesForm() {    
+    const rolesForm = new FormGroup({
+      roles : new FormArray([])
+    });
+
+    return rolesForm;    
   }
 
    /**
@@ -320,7 +327,18 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Loads the roles that the petitioner user can assign to other users
    */
-  loadRoles() {
+  loadRoles$() {
+    return this.userFormService
+      .getRoles$()
+      .pipe(
+        mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
+        filter((resp: any) => !resp.errors || resp.errors.length === 0),
+        map(roles => roles.data.getRoles),
+        takeUntil(this.ngUnsubscribe)
+      );
+  }
+
+  loadRoles1() {
     this.userFormService
       .getRoles$()
       .pipe(
@@ -337,37 +355,58 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Refresh roles
    */
   refreshRoles() {
+    console.log('refreshRoles');
     if (this.pageType == "new") {
       return;
     }
-    this.userFormService.getUserRoleMapping$(this.user._id, this.paramBusinessId)
+    console.log('refreshRoles2');
+    this.loadRoles$()
     .pipe(
-      filter(userRolesData => userRolesData.data.getUserRoleMapping && userRolesData.data.getUserRoleMapping.length > 0),
-      mergeMap(userRolesData => Rx.Observable.from(userRolesData.data.getUserRoleMapping)),
-      map((role: { id, name } | any) => {
-          return {
-            id: role.id,
-            name: role.name
-          };
-        }),
-      toArray(),
-      mergeMap((userRolesMap: any) => {
-        return this.userFormService.getRoles$().pipe(
-          mergeMap(rolesData => Rx.Observable.from(rolesData.data.getRoles)),
-          map((role: { id, name }) => {
-          return {
-            id: role.id,
-            name: role.name,
-            selected: userRolesMap.some(userRole => userRole.id == role.id)
-          };
-        }),
-        toArray()
-      )
-      }),
-      takeUntil(this.ngUnsubscribe)
-    ).subscribe(result => {
-      this.userRoles = result;
-    })
+      map(roles => [roles, this.user.roles]), 
+      takeUntil(this.ngUnsubscribe)     
+    )
+    .subscribe(([roles, userRoles]) => {
+      console.log('Roles => ', roles, ' userRoles => ', userRoles);
+      roles.forEach(role => {          
+        (this.userRolesForm.get('roles') as FormArray).push(
+          new FormGroup({
+            key: new FormControl(role),
+            active: new FormControl(userRoles.includes(role))
+          })
+        );
+      });
+    });
+
+
+
+    // this.userFormService.getUserRoleMapping$(this.user._id, this.paramBusinessId)
+    // .pipe(
+    //   filter(userRolesData => userRolesData.data.getUserRoleMapping && userRolesData.data.getUserRoleMapping.length > 0),
+    //   mergeMap(userRolesData => Rx.Observable.from(userRolesData.data.getUserRoleMapping)),
+    //   map((role: { id, name } | any) => {
+    //       return {
+    //         id: role.id,
+    //         name: role.name
+    //       };
+    //     }),
+    //   toArray(),
+    //   mergeMap((userRolesMap: any) => {
+    //     return this.userFormService.getRoles$().pipe(
+    //       mergeMap(rolesData => Rx.Observable.from(rolesData.data.getRoles)),
+    //       map((role: { id, name }) => {
+    //       return {
+    //         id: role.id,
+    //         name: role.name,
+    //         selected: userRolesMap.some(userRole => userRole.id == role.id)
+    //       };
+    //     }),
+    //     toArray()
+    //   )
+    //   }),
+    //   takeUntil(this.ngUnsubscribe)
+    // ).subscribe(result => {
+    //   this.userRoles = result;
+    // })
   }
 
   removeRoles(roles) {
@@ -391,7 +430,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    */
   addRolesToUser(rolesToAdd) {
     this.userFormService
-      .addRolesToTheUser$(this.user._id, rolesToAdd, this.paramBusinessId)
+      .addRolesToTheUser$(this.user._id, rolesToAdd)
       .pipe(
         mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
         filter((resp: any) => !resp.errors || resp.errors.length === 0),
@@ -432,7 +471,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
         },
         error => {
           console.log("Error removing roles from the user ==> ", error);
-          this.refreshRoles();
+          //this.refreshRoles();
         }
       );
   }
@@ -441,16 +480,20 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Detects when a roles has been added or deleted to a user
    * @param $event
    */
-  onUserRolesChange(roleEvent) {
-    if(roleEvent.selected){
+  onUserRolesChange(key, roleEvent) {
+    console.log('roleEvent => ', key, roleEvent);
+    console.log('roleEvent.checked => ', roleEvent.checked);
+    if(roleEvent.checked){
       const rolesToAdd = [];
-      rolesToAdd.push({id: roleEvent.value.id, name: roleEvent.value.name});
+      rolesToAdd.push(key);
       this.addRolesToUser(rolesToAdd);
     }else{
       const rolesToRemove = [];
-      rolesToRemove.push({id: roleEvent.value.id, name: roleEvent.value.name});
+      rolesToRemove.push(key);
       this.removeRolesFromUser(rolesToRemove);
     }
+
+
   }
 
   /**
@@ -513,6 +556,40 @@ export class UserFormComponent implements OnInit, OnDestroy {
           console.log("Error resetting user password => ", error);
           this.snackBar.open(
             "Error reseteando contraseña del usuario",
+            "Cerrar",
+            {
+              duration: 2000
+            }
+          );
+          this.userAuthForm.reset();
+        }
+      );
+  }
+
+  /**
+   * Reset the user password
+   */
+  changeUserRoles() {
+    const data = this.userRolesForm.getRawValue();
+    console.log();
+    this.userFormService
+      .updateUserRoles$(this.user._id, data)
+      .pipe(
+        mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
+        filter((resp: any) => !resp.errors || resp.errors.length === 0),
+        takeUntil(this.ngUnsubscribe)
+      )
+      .subscribe(
+        model => {
+          this.snackBar.open("Los roles del usuario han sido actualizados", "Cerrar", {
+            duration: 2000
+          });
+          this.userAuthForm.reset();
+        },
+        error => {
+          console.log("Error updating user roles => ", error);
+          this.snackBar.open(
+            "Error actualizando roles del usuario",
             "Cerrar",
             {
               duration: 2000

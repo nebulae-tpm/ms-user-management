@@ -329,10 +329,11 @@ class UserValidatorHelper {
       this.checkRole$(authToken, method)
         .mergeMap(roles => {
           const user = {
-            _id: !data.args ? undefined : data.args.userId,
-            userRoles: !data.args ? undefined : data.args.input,
+            _id: data.args ? data.args.userId : undefined,
+            userRoles: data.args ? data.args.input : undefined,
           };
-          if (!user.id || !user.userRoles) {
+          console.log('Add roles => ', user);
+          if (!user._id || !user.userRoles) {
             return this.createCustomError$(
               USER_MISSING_DATA_ERROR_CODE,
               method

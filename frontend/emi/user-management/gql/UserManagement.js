@@ -77,10 +77,7 @@ export const getUser = gql`
 //Gets the roles that the petitioner user can assign to other users
 export const getRoles = gql`
   query getRoles{
-    getRoles{
-      id
-      name
-    }
+    getRoles
   }
 `;
 
@@ -96,8 +93,8 @@ export const getUserRoleMapping = gql`
 
 // MUTATIONS
 export const addRolesToTheUser = gql`
-  mutation addRolesToTheUser($userId: ID!, $businessId: String!, $input: RolesInput) {
-    addRolesToTheUser(userId: $userId, businessId: $businessId, input: $input) {
+  mutation addRolesToTheUser($userId: ID!, $input: RolesInput) {
+    addRolesToTheUser(userId: $userId, input: $input) {
       code
       message
     }
@@ -105,8 +102,8 @@ export const addRolesToTheUser = gql`
 `;
 
 export const removeRolesFromUser = gql`
-  mutation removeRolesFromUser($userId: ID!, $businessId: String!, $input: RolesInput) {
-    removeRolesFromUser(userId: $userId, businessId: $businessId, input: $input) {
+  mutation removeRolesFromUser($userId: ID!, $input: RolesInput) {
+    removeRolesFromUser(userId: $userId, input: $input) {
       code
       message
     }

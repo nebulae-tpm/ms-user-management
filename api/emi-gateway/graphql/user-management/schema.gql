@@ -109,7 +109,7 @@ type Query {
   "Gets user role mapping"
   getUserRoleMapping(userId: ID!, businessId: String!): [UserRole]
   "Gets roles that the petitioner can assign to another users according to its role"
-  getRoles: [UserRole]
+  getRoles: [String]
 }
 
 type Mutation {
@@ -119,6 +119,8 @@ type Mutation {
   updateUserGeneralInfo(userId: ID!, input: UserInput): CommandResponse
   "Updates the user state"
   updateUserState(userId: ID!, username: String!, state: Boolean!): CommandResponse
+  # "Updates the user roles to the ID"
+  # updateUserRoles(userId: ID!, input: RolesInput!): CommandResponse
   "Creates auth for the user"
   createUserAuth(userId: ID!, username: String!, input: AuthInput): CommandResponse
   "Changes user password"

@@ -278,6 +278,29 @@ module.exports = {
         )
         .toPromise();
     },
+    //   updateUserRoles(root, args, context) {
+    //   return RoleValidator.checkPermissions$(
+    //     context.authToken.realm_access.roles,
+    //     contextName,
+    //     "updateUserRoles",
+    //     USERS_PERMISSION_DENIED_ERROR_CODE,
+    //     "Permission denied",
+    //     ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
+    //   )
+    //     .pipe(
+    //       mergeMap(() =>
+    //         context.broker.forwardAndGetReply$(
+    //           "User",
+    //           "emigateway.graphql.mutation.updateUserRoles",
+    //           { root, args, jwt: context.encodedToken },
+    //           2000
+    //         )
+    //       ),
+    //       catchError(err => handleError$(err, "updateUserRoles")),
+    //       mergeMap(response => getResponseFromBackEnd$(response))
+    //     )
+    //     .toPromise();
+    // },
     addRolesToTheUser(root, args, context) {
       return RoleValidator.checkPermissions$(
         context.authToken.realm_access.roles,

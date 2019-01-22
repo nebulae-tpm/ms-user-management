@@ -347,10 +347,10 @@ class User {
           temporary: data.args.input.temporary || false,
           value: data.args.input.password
         }
-        console.log('1 userKeycloak => ', userKeycloak, password);
 
         return UserDA.resetUserPassword$(userKeycloak.id, password).mapTo(userKeycloak);
       })
+      //.mergeMap(userKeycloakId => UserDA.addRolesToTheUserKeycloak$(userKeycloak.id, arrayRoles))
       .mergeMap(userKeycloak => {
         console.log('Emit UserAuthCreated => ', userKeycloak);
         return eventSourcing.eventStore.emitEvent$(
@@ -379,7 +379,7 @@ class User {
   }
 
   /**
-   * Updates the user general info
+   * Reset the user passowrd
    *
    * @param {*} data args that contain the user ID
    * @param {string} jwt JWT token

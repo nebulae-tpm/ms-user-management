@@ -23,7 +23,7 @@ export class User{
     this.auth = user.auth || {};
     this.state = user.state;
     this.generalInfo = user.generalInfo || {};
-    this.roles = [];
+    this.roles = user.roles || [];
   }
 
 }

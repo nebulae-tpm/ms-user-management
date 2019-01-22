@@ -23,15 +23,16 @@ class UserDA {
      /**
     * Adds the specified roles to the user on Keycloak and Mongo
     * @param {*} userId Id of the user 
+    * @param {*} userKeycloakId Id of the user On Keycloak
     * @param {*} arrayRoles Roles to be added to the user
     */
    static addRolesToTheUser$(userId, userKeycloakId, arrayRoles) {
-
+    console.log('addRolesToTheUser ----> ', userId, userKeycloakId, arrayRoles);
     return Rx.Observable.from(arrayRoles)
     .map(role => role.name)
     .toArray()
     .mergeMap(rolesMapped => this.addRolesToTheUserMongo$(userId, rolesMapped))
-    .mergeMap(() => this.addRolesToTheUserKeycloak$(userKeycloakId, arrayRoles));
+    .mergeMap(userMongo => this.addRolesToTheUserKeycloak$(userKeycloakId, arrayRoles).mapTo(userMongo));
   }
 
    /**
@@ -47,13 +48,67 @@ class UserDA {
         collection.findOneAndUpdate(
           { _id: userId },
           {
-            $set: {roles: arrayRoles}
+            $addToSet: {roles: { $each: arrayRoles}}
           },{
             returnOriginal: false
           }
         )
     )
     .map(result => result && result.value ? result.value : undefined);
+  }
+
+  /**
+    * Removes the specified roles to the user on Keycloak and Mongo
+    * @param {*} userId Id of the user 
+    * @param {*} userKeycloakId Id of the user On Keycloak
+    * @param {*} arrayRoles Roles to be added to the user
+    */
+   static removeRolesFromUser$(userId, userKeycloakId, arrayRoles) {
+    console.log('removeRolesToTheUser ----> ', userId, userKeycloakId, arrayRoles);
+    return Rx.Observable.from(arrayRoles)
+    .map(role => role.name)
+    .toArray()
+    .mergeMap(rolesMapped => this.removeRolesFromUserMongo$(userId, rolesMapped))
+    .mergeMap(userMongo => this.removeRolesFromUserKeycloak$(userKeycloakId, arrayRoles).mapTo(userMongo));
+  }
+  
+  /**
+    * Removes the specified roles to the user
+    * @param {*} userId Id of the user 
+    * @param {*} arrayRoles Roles to be removed from the user
+    */
+   static removeRolesFromUserMongo$(userId, arrayRoles) {
+
+    const collection = mongoDB.db.collection(CollectionName);
+
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId },
+          {
+            $pull: {roles: {$in: arrayRoles}}
+          },
+          {
+            returnOriginal: false
+          }
+        )
+    )
+    .map(result => result && result.value ? result.value : undefined);
+  }
+
+  /**
+    * Removes the specified roles to the user
+    * @param {*} userId Id of the user 
+    * @param {*} arrayRoles Roles to be removed from the user
+    */
+   static removeRolesFromUserKeycloak$(userId, arrayRoles) {
+
+    return Rx.Observable.defer(() =>
+      KeycloakDA.keycloakClient.realms.maps.unmap(
+        process.env.KEYCLOAK_BACKEND_REALM_NAME,
+        userId,
+        arrayRoles
+      )
+    );
   }
 
    /**
@@ -71,23 +126,6 @@ class UserDA {
       )
     );
   }
-
-    /**
-    * Removes the specified roles to the user
-    * @param {*} userId Id of the user 
-    * @param {*} arrayRoles Roles to be removed from the user
-    */
-   static removeRolesFromUserKeycloak$(userId, arrayRoles) {
-
-    return Rx.Observable.defer(() =>
-      KeycloakDA.keycloakClient.realms.maps.unmap(
-        process.env.KEYCLOAK_BACKEND_REALM_NAME,
-        userId,
-        arrayRoles
-      )
-    );
-  }
-
 
     /**
    * Creates a new user on Keycloak and Mongo
@@ -627,25 +665,28 @@ class UserDA {
       });
     }
 
+    console.log('userRolesAllowed => ', userRolesAllowed, '-- ', USER_ROLES_ALLOW_TO_ASSIGN);
+    return Rx.Observable.of(userRolesAllowed);
+
     //Gets all of the user roles registered on the Keycloak realm
-    return (
-      Rx.Observable.defer(() =>
-        KeycloakDA.keycloakClient.realms.roles.find(
-          process.env.KEYCLOAK_BACKEND_REALM_NAME
-        )
-      )
-        .mergeMap(userRoles => Rx.Observable.from(userRoles))
-        // We can only return the user roles that the petitioner user is allowed to assign to other users
-        .filter(role => userRolesAllowed.includes(role.name))
-        .map(result => {
-          const role = {
-            id: result.id,
-            name: result.name
-          };
-          return role;
-        })
-        .toArray()
-    );
+    // return (
+    //   Rx.Observable.defer(() =>
+    //     KeycloakDA.keycloakClient.realms.roles.find(
+    //       process.env.KEYCLOAK_BACKEND_REALM_NAME
+    //     )
+    //   )
+    //     .mergeMap(userRoles => Rx.Observable.from(userRoles))
+    //     // We can only return the user roles that the petitioner user is allowed to assign to other users
+    //     .filter(role => userRolesAllowed.includes(role.name))
+    //     .map(result => {
+    //       const role = {
+    //         id: result.id,
+    //         name: result.name
+    //       };
+    //       return role;
+    //     })
+    //     .toArray()
+    // );
   }
 
 
@@ -660,8 +701,14 @@ class UserDA {
       KeycloakDA.keycloakClient.realms.roles.find(
         process.env.KEYCLOAK_BACKEND_REALM_NAME
       )
-    ).mergeMap(roles => Rx.Observable.from(roles))
-    .filter(roleKeycloak => roles == null || roles.includes(roleKeycloak.name))
+    ).mergeMap(roles => {
+      console.log('getRolesKeycloak => ', roles);
+      return Rx.Observable.from(roles);
+    })
+    .filter(roleKeycloak => {
+      console.log('roleKeycloak --> ', roleKeycloak, roles);
+      return roles == null || roles.includes(roleKeycloak.name);
+    })
     .toArray();
   }
 }

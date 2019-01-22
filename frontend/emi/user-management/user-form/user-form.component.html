@@ -185,10 +185,24 @@
           <div class="tab-content p-24" fusePerfectScrollbar>
 
               <div fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
-                  <div fxLayoutAlign="start start" class="h2">{{'USER.ROLES' | translate}}</div>
+                  <div fxLayoutAlign="start start" class="h2">{{'USER.USER_ROLES_ASSIGNED' | translate}}</div>
                   <div fxLayout="row">
-                      <div fxLayoutAlign="center start" fxFlex="30" style="margin:7px;">
-                        <mat-selection-list #list [(ngModel)]="selectedUserRoles" fxFlex="100">
+
+                    <form name="userRolesForm" [formGroup]="userRolesForm" class="user w-100-p" fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
+                        
+                      <div fxFlex="100" formArrayName="roles" *ngFor="let role of userRolesForm.get('roles').controls ; let i = index;">
+                          <div [formGroupName]="i" >
+                              <mat-checkbox *ngIf="role.get('key')" [formControlName]="'active'" (change)="onUserRolesChange(role.get('key').value, $event)">
+                                  {{ 'USER.ROLES_LIST.' + role.get('key').value | translate }}
+                              </mat-checkbox>
+                          </div>
+                         <!-- orderForm.controls.items.controls[i].controls.name.value -->
+                      </div>
+
+                    </form>
+
+                      <div fxLayoutAlign="center start" fxFlex="30" style="margin:7px;" *ngIf="false">
+                        <mat-selection-list #list [(ngModel)]="selectedUserRoles" fxFlex="100" *ngIf="false">
                             <div fxLayout="row" fxLayoutAlign="start center">
                                 <h3 mat-subheader>{{'USER.USER_ROLES_ASSIGNED' | translate}}</h3>
                                   <mat-icon aria-label="Roles of the user">vpn_key</mat-icon>
