@@ -20,7 +20,7 @@
         <div fxLayout="column" fxLayoutAlign="start start" *fuseIfOnDom>
 
           <div class="h2" *ngIf="user._id">
-            {{user.username}}
+            {{user.auth ? user.auth.username: user.generalInfo.name}}
           </div>
 
           <div class="h2" *ngIf="!user._id">

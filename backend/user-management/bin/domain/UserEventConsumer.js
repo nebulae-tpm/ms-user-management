@@ -20,7 +20,7 @@ class UserEventConsumer {
    */
   handleUserCreated$(userCreatedEvent) {
     const user = userCreatedEvent.data;
-
+    console.log('handleUserCreated => ', userCreatedEvent);
     return UserDA.getUsers$(0, 1, undefined, user.businessId)
     //First user of a business must be created with the preconfigured roles 
     .mergeMap(users => {
@@ -33,37 +33,6 @@ class UserEventConsumer {
     .mergeMap(user => {
       console.log('Create user => ', user);
       return UserDA.createUser$(user)
-      // .mergeMap(user=>{
-      //   //If this is the first user of a business, the user must be preconfigured with the roles specified in the envirment variable and a random password
-      //   if(users.length == 0){
-      //     const ROLE_FIRST_USER_ASSIGN = JSON.parse(process.env.ROLE_FIRST_USER_ASSIGN);
-      //     return UserDA.getRolesKeycloak$()
-      //     .mergeMap(roles => {
-      //       const rolesToAdd = roles.map(role => {
-      //         return {
-      //           id: role.id,
-      //           name: role.name
-      //         }
-      //       }).filter(role => ROLE_FIRST_USER_ASSIGN.roles.includes(role.name));
-
-      //       const randomPassword = {
-      //         temporary: true,
-      //         value: (Math.floor(Math.random()*90000000) + 10000000)+''
-      //       };
-
-      //       console.log('randomPassword => ', randomPassword);
-
-      //       //Adds default roles and temporal password
-      //       return Rx.Observable.forkJoin(
-      //         UserDA.addRolesToTheUser$(user.id, rolesToAdd),
-      //         UserDA.resetUserPassword$(user.id, randomPassword)  
-      //       ).mapTo(user)
-
-      //       //return UserDA.addRolesToTheUser$(user.id, rolesToAdd).mapTo(user)
-      //     })
-      //   }
-      //   return Rx.Observable.of(user);
-      // });
     })
     .mergeMap(result => {
       return broker.send$(MATERIALIZED_VIEW_TOPIC, `UserUpdatedSubscription`, result.ops[0]);
@@ -156,9 +125,9 @@ class UserEventConsumer {
  */
   handleUserRolesAdded$(userRolesAddedEvent) {
     const user = userRolesAddedEvent.data;
-    return UserDA.getRolesKeycloak$(user.userRoles.roles)
-    .mergeMap(rolesKeycloak => UserDA.getUserById$(user._id).map(userMongo => [rolesKeycloak, userMongo]))
-    .mergeMap(([rolesKeycloak, userMongo]) => UserDA.addRolesToTheUser$(userMongo._id, userMongo.auth.userKeycloakId, rolesKeycloak))
+    return Rx.Observable.of(user)
+    .mergeMap(user => UserDA.getUserById$(user._id))
+    .mergeMap(userMongo => UserDA.addRolesToTheUser$(userMongo, user.userRoles.roles))
     .mergeMap(result => {
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,

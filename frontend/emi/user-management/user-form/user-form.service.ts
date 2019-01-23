@@ -52,14 +52,12 @@ export class UserFormService {
   /**
    * Gets the users by its id
    * @param id User ID
-   * @param businessId Id of the business to which the user belongs
    */
-  getUser$(id, businessId) {
+  getUser$(id) {
     return this.gateway.apollo.query<any>({
       query: getUser,
       variables: {
-        id: id,
-        businessId: businessId
+        id: id
       },
       fetchPolicy: "network-only",
       errorPolicy: "all"

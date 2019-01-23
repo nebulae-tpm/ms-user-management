@@ -231,6 +231,10 @@ class GraphQlService {
         fn: user.createUserAuth$,
         obj: user
       },
+      'emigateway.graphql.mutation.removeUserAuth': {
+        fn: user.removeUserAuth$,
+        obj: user
+      },
       'emigateway.graphql.mutation.addRolesToTheUser': {
         fn: user.addRolesToTheUser$,
         obj: user

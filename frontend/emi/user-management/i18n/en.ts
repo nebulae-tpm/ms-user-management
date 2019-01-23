@@ -58,7 +58,9 @@ export const locale = {
         'BUSINESS-OWNER': 'Business owner',
         'POS': 'POS',
         'PLATFORM-ADMIN': 'Platform admin',
-        'SYSADMIN': 'System admin'
+        'SYSADMIN': 'System admin',
+        'BUSINESS-ADMIN': 'Business admin',
+        'BUSINESS-VIEWER': 'Business viewer'
       },
       CLOSE: 'Close',
       RESET_PASSWORD: 'Reset password'

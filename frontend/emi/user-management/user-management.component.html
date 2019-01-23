@@ -119,7 +119,7 @@
             -->
             <mat-header-row *cdkHeaderRowDef="displayedColumns"></mat-header-row>
 
-            <mat-row *cdkRowDef="let user; columns: displayedColumns" class="item" matRipple [routerLink]="'user/' + selectedBusinessId + '/' + user._id">
+            <mat-row *cdkRowDef="let user; columns: displayedColumns" class="item" matRipple [routerLink]="'user/' + user._id">
             </mat-row>
           </mat-table>
 

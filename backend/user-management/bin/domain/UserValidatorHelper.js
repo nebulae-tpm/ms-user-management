@@ -21,25 +21,17 @@ class UserValidatorHelper {
   static validateUserCreation$(data, authToken) {
     const method = "createUser$()";
     //Validate if the user that is performing the operation has the required role.
-    return (
-      this.checkRole$(authToken, method)
+    return this.checkRole$(authToken, method)
         .mergeMap(roles => {
           const user = data.args ? data.args.input:undefined;
           const businessId = data.args ? data.args.businessId.trim() : undefined;
           //Validate if required parameters were sent
-          const invalidUserMissingData =
-            !user ||
-            !user.generalInfo.name ||
-            !user.generalInfo.lastname ||
-            !user.generalInfo.email ||
-            !user.generalInfo.phone;
-
+          const invalidUserMissingData = !user || !user.generalInfo.name || !user.generalInfo.lastname || !user.generalInfo.email || !user.generalInfo.phone;
 
           if (invalidUserMissingData) {
             return this.createCustomError$(
               invalidUserMissingData
-                ? USER_MISSING_DATA_ERROR_CODE
-                : INVALID_USERNAME_FORMAT_ERROR_CODE,
+                ? USER_MISSING_DATA_ERROR_CODE : INVALID_USERNAME_FORMAT_ERROR_CODE,
               method
             );
           }
@@ -49,25 +41,17 @@ class UserValidatorHelper {
             return this.createCustomError$(MISSING_BUSINESS_ERROR_CODE, method);
           }
 
-          //If the user that is performing the operation is not PLATFORM-ADMIN or platfrom-admin,
-          // we must check that the business id match with the id of the token
-          if (!roles["PLATFORM-ADMIN"]) {
-            if (businessId != authToken.businessId) {
-              return this.createCustomError$(
-                USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE,
-                method
-              );
-            }
-          }
-
           user.businessId = businessId;
-          return Rx.Observable.of(user);
+
+          //If the user that is performing the operation is not PLATFORM-ADMIN,
+          // we must check that the business id match with the id of the token
+          return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method, roles);
+          //return Rx.Observable.of(user);
         })
         //Checks if the email already was used
         .mergeMap(user => {
-          return this.checkEmailExistKeycloakOrMongo$(null, user.generalInfo.email);
-        })
-    );
+          return this.checkEmailExistKeycloakOrMongo$(null, user.generalInfo.email).mapTo(user);
+        });
   }
 
   //Validates if the user can be updated checking if the info
@@ -84,11 +68,8 @@ class UserValidatorHelper {
           };
 
           console.log('updateUserGeneralInfo -----> ', user);
-          if (!user ||
-            !user.generalInfo.name ||
-            !user.generalInfo.lastname ||
-            !user.generalInfo.email ||
-            !user.generalInfo.phone) {
+          if (!user || !user.generalInfo.name || !user.generalInfo.lastname ||
+            !user.generalInfo.email || !user.generalInfo.phone) {
             return this.createCustomError$(
               USER_MISSING_DATA_ERROR_CODE,
               method
@@ -100,14 +81,11 @@ class UserValidatorHelper {
           return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method, roles);
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken, method))
-
         .mergeMap(user => {
           return UserDA.getUserById$(data.args.userId)
           .mergeMap(userMongo => 
-            this.checkEmailExistKeycloakOrMongo$(
-              userMongo.auth ? userMongo.auth.userKeycloakId: undefined, 
-              user.generalInfo.email
-            ).mapTo(user)
+            this.checkEmailExistKeycloakOrMongo$(userMongo.auth ? userMongo.auth.userKeycloakId: undefined, user.generalInfo.email)
+            .mapTo(user)
           )
         })
     );
@@ -119,8 +97,7 @@ class UserValidatorHelper {
     //Validate if the user that is performing the operation has the required role.
     return (
       this.checkRole$(authToken, method)
-
-        .mergeMap(roles => {
+      .mergeMap(roles => {
           const user = {
             _id: data.args ? data.args.userId : undefined,
             state: data.args ? data.args.state : undefined
@@ -140,23 +117,23 @@ class UserValidatorHelper {
     );
   }
 
-  static checkBusiness(args, roles, authToken) {
-    //If the business ID to which the user belongs is not indicated, we must throw an error indicating the problem.
-    if (!args.businessId) {
-      return this.createCustomError$(MISSING_BUSINESS_ERROR_CODE, 'Debe indicar la unidad de negocio del usuario');
-    }
+  // static checkBusiness(args, roles, authToken) {
+  //   //If the business ID to which the user belongs is not indicated, we must throw an error indicating the problem.
+  //   if (!args.businessId) {
+  //     return this.createCustomError$(MISSING_BUSINESS_ERROR_CODE, 'Debe indicar la unidad de negocio del usuario');
+  //   }
 
-    //Only user with PLATFORM-ADMIN role can update user that belongs to another businesses
-    if (!roles["PLATFORM-ADMIN"]) {
-      if (args.businessId.trim() != authToken.businessId) {
-        return this.createCustomError$(
-          USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE,
-          'Debe indicar la unidad de negocio del usuario'
-        );
-      }
-    }   
+  //   //Only user with PLATFORM-ADMIN role can update user that belongs to another businesses
+  //   if (!roles["PLATFORM-ADMIN"]) {
+  //     if (args.businessId.trim() != authToken.businessId) {
+  //       return this.createCustomError$(
+  //         USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE,
+  //         'Debe indicar la unidad de negocio del usuario'
+  //       );
+  //     }
+  //   }   
     
-  }
+  // }
 
 
   //Validates if the user can resset its password
@@ -187,46 +164,19 @@ class UserValidatorHelper {
 
           //Evaluate if the username has a valid format
           const invalidUserNameFormat =
-            !username ||
-            !user.username.trim().match(userNameRegex);
+            !username || !user.username.trim().match(userNameRegex);
 
           if (invalidUserMissingData || invalidUserNameFormat) {
             return this.createCustomError$(
               invalidUserMissingData
                 ? USER_MISSING_DATA_ERROR_CODE
-                : INVALID_USERNAME_FORMAT_ERROR_CODE,
-              method
+                : INVALID_USERNAME_FORMAT_ERROR_CODE, method
             );
           }
 
-          //If the user that is performing the operation is not PLATFORM-ADMIN or platfrom-admin,
+          //If the user that is performing the operation is not PLATFORM-ADMIN,
           // we must check that the business id match with the id of the token
-          if (!roles["PLATFORM-ADMIN"]) {
-            if (user.businessId != authToken.businessId) {
-              return this.createCustomError$(
-                USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE,
-                method
-              );
-            }
-          }
-
-          const attributes = {};
-          attributes["businessId"] = user.businessId;
-
-          const userKeycloak = {
-            username: username.trim(),
-            firstName: user.name,
-            lastName: user.lastname,
-            attributes: attributes,
-            email: user.email,
-            enabled: user.state || false ,
-            id: userId
-          };
-
-          //this.checkBusiness(user, roles, authToken);
-          console.log("create user keycloak  => ", user);
-
-          return Rx.Observable.of(user);
+          return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method, roles);
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
         .mergeMap(user => this.checkUsernameExistKeycloak$(user, user.username))
@@ -263,9 +213,6 @@ class UserValidatorHelper {
             );
           }
 
-          this.checkBusiness(user, roles, authToken);
-          console.log("resetPassword => ", user);
-
           return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method,roles);
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
@@ -298,13 +245,8 @@ class UserValidatorHelper {
           };
 
           if (!user._id || !userPassword || !userPassword.password) {
-            return this.createCustomError$(
-              USER_MISSING_DATA_ERROR_CODE,
-              method
-            );
+            return this.createCustomError$(USER_MISSING_DATA_ERROR_CODE, method);
           }
-
-          this.checkBusiness(user, roles, authToken);
           console.log("resetPassword => ", user);
 
           //Checks if the user that is being updated exists on the same business of the user that is performing the operation
@@ -339,10 +281,6 @@ class UserValidatorHelper {
               method
             );
           }
-
-          this.checkBusiness(user, roles, authToken);
-
-
           return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method, roles);
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
@@ -400,30 +338,32 @@ class UserValidatorHelper {
   }
 
   static checkEmailExistKeycloakOrMongo$(userKeycloakId, email) {
+    console.log('checkEmailExistKeycloakOrMongo => ', userKeycloakId, email);
     return Rx.Observable.of(email)
-    .concatMap(email => Rx.Observable.concat(
-      UserDA.getUserKeycloak$(null, email),
-
+    .mergeMap(email => 
+      Rx.Observable.forkJoin(
+        UserDA.getUserKeycloak$(null, email),
+        UserDA.getUserByEmailMongo$(email)
     ))
     .mergeMap(([keycloakResult, mongoResult]) => {
       console.log('keycloakResult => ', keycloakResult);
       console.log('mongoResult => ', mongoResult);
 
-      if (keycloakResult && (!userKeycloakId || userKeycloakId != keycloakResult.id)) {
+      if (keycloakResult && keycloakResult.length > 0 && (!userKeycloakId || userKeycloakId != keycloakResult[0].id)) {
         return this.createCustomError$(
           EMAIL_ALREADY_USED_ERROR_CODE,
           'Error'
         );
       }
       console.log('checkEmailExistKeycloakOrMongo1');
-       if (mongoResult && mongoResult.length > 0 && (!userKeycloakId || userKeycloakId != mongoResult[0].id)) {
+       if (mongoResult && mongoResult.length > 0 && (!userKeycloakId || userKeycloakId != mongoResult._id)) {
         return this.createCustomError$(
           EMAIL_ALREADY_USED_ERROR_CODE,
           'Error'
         );
       }
       console.log('checkEmailExistKeycloakOrMongo2');
-      return Rx.Observable.of(userKeycloakId);
+      return Rx.Observable.of(email);
     });
 
   }

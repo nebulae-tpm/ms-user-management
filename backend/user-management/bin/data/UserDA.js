@@ -26,13 +26,13 @@ class UserDA {
     * @param {*} userKeycloakId Id of the user On Keycloak
     * @param {*} arrayRoles Roles to be added to the user
     */
-   static addRolesToTheUser$(userId, userKeycloakId, arrayRoles) {
-    console.log('addRolesToTheUser ----> ', userId, userKeycloakId, arrayRoles);
-    return Rx.Observable.from(arrayRoles)
-    .map(role => role.name)
-    .toArray()
-    .mergeMap(rolesMapped => this.addRolesToTheUserMongo$(userId, rolesMapped))
-    .mergeMap(userMongo => this.addRolesToTheUserKeycloak$(userKeycloakId, arrayRoles).mapTo(userMongo));
+   static addRolesToTheUser$(userMongo, arrayRoles) {
+    console.log('addRolesToTheUser1 ----> ', userMongo, arrayRoles);
+    return Rx.Observable.of({userMongo, arrayRoles })
+    //Adds roles to the user on Mongo
+    .mergeMap(param => this.addRolesToTheUserMongo$(userMongo._id, arrayRoles))
+    //Adds roles to the user on Keycloak
+    .mergeMap(userMongo => this.addRolesToTheUserKeycloak$(userMongo.auth.userKeycloakId, arrayRoles).mapTo(userMongo));
   }
 
    /**
@@ -113,18 +113,26 @@ class UserDA {
 
    /**
     * Adds the specified roles to the user
-    * @param {*} userId Id of the user 
-    * @param {*} arrayRoles Roles to be added to the user
+    * @param {*} userKeycloakId Id of the user, if the param is not sent then this method will do nothing.
+    * @param {*} arrayRoles Roles to be added to the user, if the param is not sent or is empty then this method will do nothing.
     */
-  static addRolesToTheUserKeycloak$(userId, arrayRoles) {
+  static addRolesToTheUserKeycloak$(userKeycloakId, arrayRoles) {
+    if(!userKeycloakId || !arrayRoles || arrayRoles.length == 0){
+      return Rx.Observable.of(null);
+    }
 
-    return Rx.Observable.defer(() =>
-      KeycloakDA.keycloakClient.realms.maps.map(
-        process.env.KEYCLOAK_BACKEND_REALM_NAME,
-        userId,
-        arrayRoles
+    //To add the roles to a keycloak user is needed to have the Id of each role, therefore we have to get this info from Keycloak
+    return this.getRolesKeycloak$(arrayRoles)
+    .mergeMap(keycloakRoles => {
+      //Adds the keycloak roles to the user on Keycloak
+      return Rx.Observable.defer(() =>
+        KeycloakDA.keycloakClient.realms.maps.map(
+          process.env.KEYCLOAK_BACKEND_REALM_NAME,
+          userKeycloakId,
+          keycloakRoles
+        )
       )
-    );
+    });
   }
 
     /**
@@ -188,7 +196,7 @@ class UserDA {
     return Rx.Observable.of(generalInfo)
     .mergeMap(evt => UserDA.updateUserGeneralInfoMongo$(userId, generalInfo))
     .mergeMap(user => {
-      if(user && user.auth.userKeycloakId){
+      if(user && user.auth && user.auth.userKeycloakId){
         return UserDA.updateUserGeneralInfoKeycloak$(user.auth.userKeycloakId, generalInfo).mapTo(user)
       }
       return Rx.Observable.of(user)
@@ -274,7 +282,7 @@ class UserDA {
     return Rx.Observable.of(newUserState)
     .mergeMap(evt => UserDA.updateUserStateMongo$(userId, newUserState))
     .mergeMap(user => {
-      if(user && user.auth.userKeycloakId){
+      if(user && user.auth && user.auth.userKeycloakId){
         return UserDA.updateUserStateKeycloak$(user.auth.userKeycloakId, newUserState).mapTo(user)
       }
       return Rx.Observable.of(user);
@@ -326,7 +334,7 @@ class UserDA {
    * @param {*} userId
    * @param {*} userPassword
    */
-  static resetUserPassword$(userId, userPassword) {
+  static resetUserPasswordKeycloak$(userId, userPassword) {
     console.log('resetUserPassword => ', userId, userPassword);
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.users.resetPassword(
@@ -334,10 +342,7 @@ class UserDA {
         userId,
         userPassword
       )
-    ).catch(error => {
-      console.log('Error => ', error);
-      throw error;
-    });
+    );
   }
 
 /**
@@ -437,6 +442,7 @@ class UserDA {
     if(email){
       optionsFilter.email = email;
     }
+    console.log('getUserKeycloak');
     return Rx.Observable.of(optionsFilter)
     .mergeMap(filter => {
       return KeycloakDA.keycloakClient.users.find(
@@ -444,93 +450,6 @@ class UserDA {
         filter
       );
     })
-  }
-
-
-
-  /**
-   * Gets the users paging
-   * @param {*} page
-   * @param {*} paginationCount
-   * @param {*} searchFilter
-   * @param {*} businessId
-   * @param {*} username
-   * @param {*} email
-   * @param {*} userId
-   */
-  static getUsers1$(
-    page,
-    paginationCount,
-    searchFilter,
-    businessId,
-    username,
-    email,
-  ) {
-    //Gets the amount of user registered on Keycloak
-    return (
-      Rx.Observable.defer(() =>
-        KeycloakDA.keycloakClient.users.count(
-          process.env.KEYCLOAK_BACKEND_REALM_NAME
-        )
-      )
-        //According to the amount of user, it generates ranges which will help us to get the users by batches
-        .mergeMap(usersCount => Rx.Observable.range(0, Math.ceil(usersCount / paginationCount)))
-        //Gets the users from Keycloak
-        .concatMap(range => {          
-          const optionsFilter = {
-            first: 100 * range,
-            max: 100,
-            search: searchFilter,
-            username: username,
-            email: email
-          };
-          return KeycloakDA.keycloakClient.users.find(
-            process.env.KEYCLOAK_BACKEND_REALM_NAME,
-            optionsFilter
-          );
-        })
-        .mergeMap(users => {
-          return Rx.Observable.from(users)
-        })
-        // We can only return the users belonging to the indicated business.
-        .filter(
-          user => {
-            return businessId == null ||
-            (user.attributes &&
-              user.attributes.businessId &&
-              user.attributes.businessId[0] == businessId);
-          }
-        )
-        .map(result => {
-          const attributes = result.attributes;
-          const user = {
-            id: result.id,
-            username: result.username,
-            generalInfo: {
-              name: result.firstName ? result.firstName : "",
-              lastname: result.lastName ? result.lastName : "",
-              documentType:
-                !attributes || !attributes.documentType
-                  ? undefined
-                  : attributes.documentType[0],
-              documentId:
-                !attributes || !attributes.documentId
-                  ? undefined
-                  : attributes.documentId[0],
-              email: result.email,
-              phone:
-                !attributes || !attributes.phone
-                  ? undefined
-                  : attributes.phone[0]
-            },
-            state: result.enabled
-          };
-          return user;
-        })
-        .skip(paginationCount * page)
-        .take(paginationCount)
-        .toArray()
-    );
   }
 
   /**
@@ -576,6 +495,7 @@ class UserDA {
     if(ignoreUserId){
       query._id = {$ne: ignoreUserId};
     }
+    console.log('getUserByEmailMongo');
     return this.getUserByFilter$(query);
   }
 
@@ -664,29 +584,7 @@ class UserDA {
         }
       });
     }
-
-    console.log('userRolesAllowed => ', userRolesAllowed, '-- ', USER_ROLES_ALLOW_TO_ASSIGN);
     return Rx.Observable.of(userRolesAllowed);
-
-    //Gets all of the user roles registered on the Keycloak realm
-    // return (
-    //   Rx.Observable.defer(() =>
-    //     KeycloakDA.keycloakClient.realms.roles.find(
-    //       process.env.KEYCLOAK_BACKEND_REALM_NAME
-    //     )
-    //   )
-    //     .mergeMap(userRoles => Rx.Observable.from(userRoles))
-    //     // We can only return the user roles that the petitioner user is allowed to assign to other users
-    //     .filter(role => userRolesAllowed.includes(role.name))
-    //     .map(result => {
-    //       const role = {
-    //         id: result.id,
-    //         name: result.name
-    //       };
-    //       return role;
-    //     })
-    //     .toArray()
-    // );
   }
 
 
@@ -694,6 +592,7 @@ class UserDA {
    * Gets roles from Keycloak according to the roles to filter, 
    * if no filter is sent then this method will return all of the roles from Keycloak.
    * @param roles to filter
+   * 
    */
   static getRolesKeycloak$(roles){
     //Gets all of the user roles registered on the Keycloak realm

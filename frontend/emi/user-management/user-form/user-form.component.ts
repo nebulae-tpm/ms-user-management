@@ -89,34 +89,11 @@ export class UserFormComponent implements OnInit, OnDestroy {
           )
 
         }),
-        // mergeMap(params => {
-        //   return this.toolbarService.onSelectedBusiness$
-        //   .pipe(
-        //     take(1),
-        //     mergeMap(selectedBusiness => {
-        //       if(!selectedBusiness || (selectedBusiness && selectedBusiness._id != params.businessId)){
-        //         return of(params.businessId)
-        //         .pipe(
-        //           mergeMap(businessId => {
-        //             return this.getBusinessFiltered$(businessId+'', 1)
-        //             .pipe(
-        //               take(1),
-        //               tap(business => this.userManagementService.selectBusiness(business)),
-        //               mergeMap(business => of(params))
-        //             );
-        //           })
-        //         );
-        //       }else{
-        //         return of(params);
-        //       }
-        //     })
-        //   )
-        // }),
         mergeMap((params: any) => {
           if(params.id === "new"){
             return Rx.Observable.of([undefined, params.businessId, params.username]);
           }else{
-            return this.userFormService.getUser$(params.id, params.businessId)
+            return this.userFormService.getUser$(params.id)
             .pipe(
               map(userData => [userData, params.businessId, params.id])
             );
@@ -151,13 +128,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    */
   createUserGeneralInfoForm() {
     return this.formBuilder.group({
-      // username: [
-      //   { value: this.user.username, disabled: this.pageType != "new" },
-      //   Validators.compose([
-      //     Validators.required,
-      //     Validators.pattern("^[a-zA-Z0-9._-]{8,}$")
-      //   ])
-      // ],
       name: [
         this.user.generalInfo ? this.user.generalInfo.name : "",
         Validators.required
@@ -376,37 +346,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
         );
       });
     });
-
-
-
-    // this.userFormService.getUserRoleMapping$(this.user._id, this.paramBusinessId)
-    // .pipe(
-    //   filter(userRolesData => userRolesData.data.getUserRoleMapping && userRolesData.data.getUserRoleMapping.length > 0),
-    //   mergeMap(userRolesData => Rx.Observable.from(userRolesData.data.getUserRoleMapping)),
-    //   map((role: { id, name } | any) => {
-    //       return {
-    //         id: role.id,
-    //         name: role.name
-    //       };
-    //     }),
-    //   toArray(),
-    //   mergeMap((userRolesMap: any) => {
-    //     return this.userFormService.getRoles$().pipe(
-    //       mergeMap(rolesData => Rx.Observable.from(rolesData.data.getRoles)),
-    //       map((role: { id, name }) => {
-    //       return {
-    //         id: role.id,
-    //         name: role.name,
-    //         selected: userRolesMap.some(userRole => userRole.id == role.id)
-    //       };
-    //     }),
-    //     toArray()
-    //   )
-    //   }),
-    //   takeUntil(this.ngUnsubscribe)
-    // ).subscribe(result => {
-    //   this.userRoles = result;
-    // })
   }
 
   removeRoles(roles) {

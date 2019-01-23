@@ -75,9 +75,6 @@ class User {
       "Permission denied",
       ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
     )
-    // .do(roles => {
-    //   UserValidatorHelper.checkBusiness(args, roles, authToken)
-    // })
     .mergeMap(roles => {
       const isPlatformAdmin = roles["PLATFORM-ADMIN"];
       //If an user does not have the role, the query must be filtered with the businessId of the user
@@ -183,7 +180,7 @@ class User {
             eventType: "UserRolesAdded",
             eventTypeVersion: 1,
             aggregateType: "User",
-            aggregateId: user.id,
+            aggregateId: user._id,
             data: user,
             user: authToken.preferred_username
           })
@@ -244,6 +241,7 @@ class User {
     return UserValidatorHelper.validateUserCreation$(data, authToken)
       .mergeMap(user => {
         user._id = id;
+        console.log('user created = ', user, authToken)
         return eventSourcing.eventStore.emitEvent$(
           new Event({
             eventType: "UserCreated",
@@ -256,6 +254,7 @@ class User {
         );
       })
       .map(result => {
+        console.log('Return user created');
         return {
           code: 200,
           message: `User with id: ${id} has been created`
@@ -275,6 +274,7 @@ class User {
     //Verify if all of the info that was enter is valid
     return UserValidatorHelper.validateUpdateUser$(data, authToken)
       .mergeMap(user => {
+        console.log('emit updateUserGeneralInfo ', user);
         return eventSourcing.eventStore.emitEvent$(
           new Event({
             eventType: "UserGeneralInfoUpdated",
@@ -336,7 +336,6 @@ class User {
    * @param {string} jwt JWT token
    */
   createUserAuth$(data, authToken) {
-    console.log('createUserAuth --- ');
     //Checks if the user that is performing this actions has the needed role to execute the operation.
     return UserValidatorHelper.validateCreateUserAuth$(data, authToken)
     .mergeMap(user => UserDA.getUserById$(user._id))
@@ -347,10 +346,66 @@ class User {
           temporary: data.args.input.temporary || false,
           value: data.args.input.password
         }
-
-        return UserDA.resetUserPassword$(userKeycloak.id, password).mapTo(userKeycloak);
+        //Set password
+        return UserDA.resetUserPasswordKeycloak$(userKeycloak.id, password)
+        //Add roles to the user on Keycloak
+        .mergeMap(result =>{
+          return  UserDA.addRolesToTheUserKeycloak$(userKeycloak.id, userMongo.roles);
+        })
+        .mapTo(userKeycloak);
+      })      
+      .mergeMap(userKeycloak => {
+        console.log('Emit UserAuthCreated => ', userKeycloak);
+        return eventSourcing.eventStore.emitEvent$(
+          new Event({
+            eventType: "UserAuthCreated",
+            eventTypeVersion: 1,
+            aggregateType: "User",
+            aggregateId: userMongo._id,
+            data: {
+              userKeycloakId: userKeycloak.id,
+              username: userKeycloak.username
+            },
+            user: authToken.preferred_username
+          })
+        );
       })
-      //.mergeMap(userKeycloakId => UserDA.addRolesToTheUserKeycloak$(userKeycloak.id, arrayRoles))
+    })
+    .map(result => {
+      return {
+        code: 200,
+        message: `User auth of the user with id: ${data.args.userId} has been created`
+      };
+    })
+    .mergeMap(rawResponse => this.buildSuccessResponse$(rawResponse))
+    .catch(err => this.handleError$(err));
+  }
+
+    /**
+   * Create the user auth
+   *
+   * @param {*} data args that contain the user ID
+   * @param {string} jwt JWT token
+   */
+  removeUserAuth$(data, authToken) {
+    //Checks if the user that is performing this actions has the needed role to execute the operation.
+    return UserValidatorHelper.validateCreateUserAuth$(data, authToken)
+    .mergeMap(user => UserDA.getUserById$(user._id))
+    .mergeMap(userMongo => {
+      return UserDA.createUserKeycloak$(userMongo, data.args.input)
+      .mergeMap(userKeycloak => {      
+        const password = {
+          temporary: data.args.input.temporary || false,
+          value: data.args.input.password
+        }
+        //Set password
+        return UserDA.resetUserPasswordKeycloak$(userKeycloak.id, password)
+        //Add roles to the user on Keycloak
+        .mergeMap(result =>{
+          return  UserDA.addRolesToTheUserKeycloak$(userKeycloak.id, userMongo.roles);
+        })
+        .mapTo(userKeycloak);
+      })      
       .mergeMap(userKeycloak => {
         console.log('Emit UserAuthCreated => ', userKeycloak);
         return eventSourcing.eventStore.emitEvent$(
@@ -388,7 +443,7 @@ class User {
     //Checks if the user that is performing this actions has the needed role to execute the operation.
     return UserValidatorHelper.validatePasswordReset$(data, authToken)
       .megeMap(user => {
-        return UserDA.resetUserPassword$(user.userKeycloakId, user.password)
+        return UserDA.resetUserPasswordKeycloak$(user.userKeycloakId, user.password)
         .mergeMap(() => {
           console.log('Emit UserAuthPasswordUpdated => ', user);
           return eventSourcing.eventStore.emitEvent$(

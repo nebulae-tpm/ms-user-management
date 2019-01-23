@@ -106,8 +106,6 @@ type Query {
   getUsers(page: Int!, count: Int!, searchFilter: String, businessId: String): [User]
   "Gets a user by its username"
   getUser(id: String!, businessId: String): User
-  "Gets user role mapping"
-  getUserRoleMapping(userId: ID!, businessId: String!): [UserRole]
   "Gets roles that the petitioner can assign to another users according to its role"
   getRoles: [String]
 }
@@ -119,10 +117,10 @@ type Mutation {
   updateUserGeneralInfo(userId: ID!, input: UserInput): CommandResponse
   "Updates the user state"
   updateUserState(userId: ID!, username: String!, state: Boolean!): CommandResponse
-  # "Updates the user roles to the ID"
-  # updateUserRoles(userId: ID!, input: RolesInput!): CommandResponse
   "Creates auth for the user"
   createUserAuth(userId: ID!, username: String!, input: AuthInput): CommandResponse
+  "Removes auth of the user (The user will be deleted from Keycloak)"
+  removeUserAuth(userId: ID!): CommandResponse
   "Changes user password"
   resetUserPassword(userId: ID!, businessId: String!, input: UserPasswordInput): CommandResponse  
   "Adds the roles to the user"

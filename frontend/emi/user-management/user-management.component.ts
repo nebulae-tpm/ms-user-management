@@ -126,7 +126,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       if (!selectedBusiness || !selectedBusiness.id){
         this.showSnackBar('USER.SELECT_BUSINESS');
       }else{
-        this.router.navigate(['user-management/user/' + selectedBusiness.id + '/new']);
+        this.router.navigate(['user-management/user/' + 'new']);
       }
     });
   }
