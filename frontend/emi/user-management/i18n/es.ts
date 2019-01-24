@@ -37,7 +37,9 @@ export const locale = {
       NEW_PASSWORD: 'Nueva contraseña',
       PASSWORD_CONFIRMATION: 'Confirmar nueva contraseña',
       TEMPORARY: 'Temporal',
-      RESET_AUTH: 'Cambiar contraseña',
+      RESET_AUTH: 'Cambiar credenciales de autenticación',
+      CREATE_AUTH: 'Crear credenciales de autenticación',
+      REMOVE_USER_AUTH: 'Eliminar credenciales de usuario',
       ADD_ROLES: 'Agregar roles',
       REMOVE_ROLES: 'Eliminar roles',
       SYSTEM_ROLES: 'Roles del sistema',
@@ -66,6 +68,8 @@ export const locale = {
       RESET_PASSWORD: 'Restablecer contraseña'
     },
     ERRORS: {
+      1: 'Error interno de servidor',
+      2: 'Permiso denegado.',
       15001: 'Error interno de servidor',
       16001: 'Error interno de servidor',
       16002: 'Permiso denegado.',
@@ -74,7 +78,11 @@ export const locale = {
       16012: 'Nombre de usuario invalido, el nombre de usuario debe contener como mínimo 8 caracteres y estar compuesto por al menos un (1) número y una (1) letra minúscula.',
       16014: 'El email ya está siendo usado',
       16015: 'Permiso denegado, no es posible actualizar la información de su propio usuario',
-      16016: 'Usuario no encontrado'
+      16016: 'Permiso denegado, no tiene permisos para actualizar un usuario perteneciente a otra unidad de negocio',
+      16017: 'Credenciales autenticación invalidas',
+      16018: 'Usuario ya tiene registrada credenciales de autenticación',
+      16019: 'Usuario no encontrado',
+      16020: 'El usuario no tiene credenciales de autenticación',
     }
   }
 };

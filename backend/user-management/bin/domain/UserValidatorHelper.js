@@ -10,7 +10,11 @@ const {
   INVALID_USERNAME_FORMAT_ERROR_CODE,
   MISSING_BUSINESS_ERROR_CODE,
   USER_UPDATE_OWN_INFO_ERROR_CODE,
-  USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE
+  USER_BELONG_TO_OTHER_BUSINESS_ERROR_CODE,
+  USER_CREDENTIAL_EXIST_ERROR_CODE,
+  USER_NOT_FOUND_ERROR_CODE,
+  USER_DOES_NOT_HAVE_AUTH_CREDENTIALS_ERROR_CODE,
+  USER_WAS_NOT_DELETED
 } = require("../tools/ErrorCodes");
 const context = "UserManagement";
 const userNameRegex = /^[a-zA-Z0-9._-]{8,}$/;
@@ -67,7 +71,6 @@ class UserValidatorHelper {
             _id: data.args ? data.args.userId : undefined
           };
 
-          console.log('updateUserGeneralInfo -----> ', user);
           if (!user || !user.generalInfo.name || !user.generalInfo.lastname ||
             !user.generalInfo.email || !user.generalInfo.phone) {
             return this.createCustomError$(
@@ -188,7 +191,7 @@ class UserValidatorHelper {
   static validateCreateUserAuth$(data, authToken) {
     const method = "createUserAuth$()";
     //Validate if the user that is performing the operation has the required role.
-    return (this.checkRole$(authToken, method)
+    return this.checkRole$(authToken, method)
         .mergeMap(roles => {
           return Rx.Observable.of(roles)
           .mergeMap(() => UserDA.getUserById$(data.args.userId))
@@ -196,14 +199,13 @@ class UserValidatorHelper {
         })
         .mergeMap(([roles, user]) => {
           if(!user){
-            //TODO: ERROR
+            return this.createCustomError$(USER_NOT_FOUND_ERROR_CODE, method);
           }
 
-          if(user.username){
-            //TODO: ERROR no puede crear usuario
+          if(user.auth && user.auth.username){
+            return this.createCustomError$(USER_CREDENTIAL_EXIST_ERROR_CODE, method);
           }
 
-          console.log('USER => ', user);
           const authInput = data.args ? data.args.input:undefined;
 
           if (!user._id || !authInput || !authInput.username || !authInput.password) {
@@ -216,8 +218,53 @@ class UserValidatorHelper {
           return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method,roles);
         })
         .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
-    );
+        //Checks if the email already was used
+        .mergeMap(user => {
+          return this.checkEmailExistKeycloakOrMongo$(null, user.generalInfo.email).mapTo(user);
+        });
   }
+
+    //Validates if the user can resset its password
+    static validateRemoveUserAuth$(data, authToken) {
+      const method = "removeUserAuth$()";
+      //Validate if the user that is performing the operation has the required role.
+      return (this.checkRole$(authToken, method)
+          .mergeMap(roles => {
+            return Rx.Observable.of(roles)
+            .mergeMap(() => UserDA.getUserById$(data.args.userId))
+            .map(user => [roles, user])
+          })
+          .mergeMap(([roles, user]) => {
+            if(!user){
+              return this.createCustomError$(USER_NOT_FOUND_ERROR_CODE, method);
+            }
+
+            if(!user.auth || !user.auth.username){
+              return this.createCustomError$(USER_DOES_NOT_HAVE_AUTH_CREDENTIALS_ERROR_CODE, method);
+            }
+  
+            return this.checkIfUserBelongsToTheSameBusiness$(user, authToken, method, roles);
+          })
+          .mergeMap(user => this.checkIfUserIsTheSameUserLogged$(user, authToken))
+      );
+    }
+
+    /**
+     * Check if the user was deleted from Keycloak
+     * @param {*} userKeycloakId 
+     */
+    static checkIfUserWasDeletedOnKeycloak$(userKeycloakId){
+      return Rx.Observable.of(userKeycloakId)
+      .mergeMap(userKeycloakId => UserDA.getUserByUserId$(userKeycloakId))
+      .mergeMap(userKeycloak => {
+        if(userKeycloak){
+          return Rx.Observable.of(userKeycloakId)
+        }else{
+          return this.createCustomError$(USER_WAS_NOT_DELETED, method);
+        }
+      })
+      .catch(error => Rx.Observable.of(userKeycloakId));
+    }
 
 
   //Validates if the user can resset its password
@@ -240,14 +287,12 @@ class UserValidatorHelper {
             password: {
               temporary: userPassword.temporary || false,
               value: userPassword.password
-            },
-            businessId: data.args ? (data.args.businessId ? data.args.businessId.trim(): undefined) : undefined
+            }
           };
 
           if (!user._id || !userPassword || !userPassword.password) {
             return this.createCustomError$(USER_MISSING_DATA_ERROR_CODE, method);
           }
-          console.log("resetPassword => ", user);
 
           //Checks if the user that is being updated exists on the same business of the user that is performing the operation
           return this.checkIfUserBelongsToTheSameBusiness$(
@@ -274,7 +319,6 @@ class UserValidatorHelper {
             _id: data.args ? data.args.userId : undefined,
             userRoles: data.args ? data.args.input : undefined,
           };
-          console.log('Add roles => ', user);
           if (!user._id || !user.userRoles) {
             return this.createCustomError$(
               USER_MISSING_DATA_ERROR_CODE,
@@ -288,13 +332,12 @@ class UserValidatorHelper {
   }
 
   /**
-   * Checks if the user that is performing the operation is the same user that is going to be updated.
+   * Checks if the user that is performing the operation is the same user that is going to be updated. If so, an error is throw.
    * @param {*} user
    * @param {*} authToken
    * @returns error if its trying to update its user
    */
   static checkIfUserIsTheSameUserLogged$(user, authToken, method) {
-    console.log('checkIfUserIsTheSameUserLogged => ', (user._id == authToken.sub), user, authToken.sub);
     if (user._id == authToken.sub) {
       return this.createCustomError$(USER_UPDATE_OWN_INFO_ERROR_CODE, method);
     }
@@ -338,7 +381,6 @@ class UserValidatorHelper {
   }
 
   static checkEmailExistKeycloakOrMongo$(userKeycloakId, email) {
-    console.log('checkEmailExistKeycloakOrMongo => ', userKeycloakId, email);
     return Rx.Observable.of(email)
     .mergeMap(email => 
       Rx.Observable.forkJoin(
@@ -346,8 +388,6 @@ class UserValidatorHelper {
         UserDA.getUserByEmailMongo$(email)
     ))
     .mergeMap(([keycloakResult, mongoResult]) => {
-      console.log('keycloakResult => ', keycloakResult);
-      console.log('mongoResult => ', mongoResult);
 
       if (keycloakResult && keycloakResult.length > 0 && (!userKeycloakId || userKeycloakId != keycloakResult[0].id)) {
         return this.createCustomError$(
@@ -355,24 +395,20 @@ class UserValidatorHelper {
           'Error'
         );
       }
-      console.log('checkEmailExistKeycloakOrMongo1');
        if (mongoResult && mongoResult.length > 0 && (!userKeycloakId || userKeycloakId != mongoResult._id)) {
         return this.createCustomError$(
           EMAIL_ALREADY_USED_ERROR_CODE,
           'Error'
         );
       }
-      console.log('checkEmailExistKeycloakOrMongo2');
       return Rx.Observable.of(email);
     });
 
   }
 
   static checkUsernameExistKeycloak$(user, username) {
-    console.log('checkUsernameExist => ', username);
     return UserDA.getUserKeycloak$(username)
     .mergeMap(userFound => {
-        console.log('userFound => ', userFound);
        if(userFound && userFound.length > 0){
           return this.createCustomError$(USER_NAME_ALREADY_USED_CODE, 'Error');
         }
@@ -382,10 +418,8 @@ class UserValidatorHelper {
   }
 
   static checkUserEmailExistKeycloak$(user, email) {
-    console.log('checkUserEmailExist => ', email);
     return UserDA.getUserKeycloak$(null, email)
     .mergeMap(userFound => {
-        console.log('userFound => ', userFound);
        if(userFound && userFound.length > 0){
           return this.createCustomError$(EMAIL_ALREADY_USED_ERROR_CODE, 'Error');
         }

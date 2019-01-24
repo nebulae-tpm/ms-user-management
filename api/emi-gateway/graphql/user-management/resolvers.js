@@ -113,29 +113,6 @@ module.exports = {
         )
         .toPromise();
     },
-    getUserRoleMapping(root, args, context) {
-      return RoleValidator.checkPermissions$(
-        context.authToken.realm_access.roles,
-        contextName,
-        "getUserRoleMapping",
-        USERS_PERMISSION_DENIED_ERROR_CODE,
-        "Permission denied",
-        ["PLATFORM-ADMIN", "BUSINESS-OWNER"]
-      )
-        .pipe(
-          mergeMap(() =>
-            broker.forwardAndGetReply$(
-              "User",
-              "emigateway.graphql.query.getUserRoleMapping",
-              { root, args, jwt: context.encodedToken },
-              2000
-            )
-          ),
-          catchError(err => handleError$(err, "getUserRoleMapping")),
-          mergeMap(response => getResponseFromBackEnd$(response))
-        )
-        .toPromise();
-    },
     getRoles(root, args, context) {
       return RoleValidator.checkPermissions$(
         context.authToken.realm_access.roles,

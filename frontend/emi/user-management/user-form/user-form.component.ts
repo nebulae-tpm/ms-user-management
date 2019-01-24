@@ -83,7 +83,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
             debounceTime(500),
             take(1),
             mergeMap(business => {
-              console.log('onSelectedBusiness$ => ', business);
               return of({...params, businessId: business.id});
             })
           )
@@ -109,9 +108,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
             ? userData.data.getUser
             : undefined
         );
-        console.log('User ------------_> ', this.user);
         this.pageType = this.user._id ? "edit" : "new";
-        console.log('pageType111 ------------_> ', this.pageType);
 
         this.userGeneralInfoForm = this.createUserGeneralInfoForm();
         this.userAuthForm = this.createUserAuthForm();
@@ -165,7 +162,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Creates the user auth reactive form
    */
   createUserAuthForm() {
-    console.log('createUserAuthForm => ', this.user);
     return this.formBuilder.group(
       {
         username: [
@@ -246,7 +242,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
     const data: any = {};
     data.generalInfo = this.userGeneralInfoForm.getRawValue();
     data.state = this.userStateForm.getRawValue().state;
-    console.log('createUser() => ', data);
     this.userFormService
       .createUser$(data, this.paramBusinessId)
       .pipe(
@@ -325,18 +320,15 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Refresh roles
    */
   refreshRoles() {
-    console.log('refreshRoles');
     if (this.pageType == "new") {
       return;
     }
-    console.log('refreshRoles2');
     this.loadRoles$()
     .pipe(
       map(roles => [roles, this.user.roles]), 
       takeUntil(this.ngUnsubscribe)     
     )
     .subscribe(([roles, userRoles]) => {
-      console.log('Roles => ', roles, ' userRoles => ', userRoles);
       roles.forEach(role => {          
         (this.userRolesForm.get('roles') as FormArray).push(
           new FormGroup({
@@ -420,8 +412,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * @param $event
    */
   onUserRolesChange(key, roleEvent) {
-    console.log('roleEvent => ', key, roleEvent);
-    console.log('roleEvent.checked => ', roleEvent.checked);
     if(roleEvent.checked){
       const rolesToAdd = [];
       rolesToAdd.push(key);
@@ -442,7 +432,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * @param $event
    */
   onUserStateChange($event) {
-    console.log('onUserStateChange', this.pageType, $event);
     if (this.pageType == "new") {
       return;
     }
@@ -475,7 +464,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    */
   createUserAuth() {    
     const data = this.userAuthForm.getRawValue();
-    console.log('createUserAuth -***', data);
 
     this.userFormService
       .createUserAuth$(this.user._id, data)
@@ -510,7 +498,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
    */
   changeUserRoles() {
     const data = this.userRolesForm.getRawValue();
-    console.log();
     this.userFormService
       .updateUserRoles$(this.user._id, data)
       .pipe(
@@ -539,6 +526,40 @@ export class UserFormComponent implements OnInit, OnDestroy {
       );
   }
 
+    /**
+   * Reset the user password
+   */
+  removeUserAuth() {
+    this.userFormService
+      .removeUserAuth$(this.user._id)
+      .pipe(
+        mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
+        filter((resp: any) => !resp.errors || resp.errors.length === 0),
+        takeUntil(this.ngUnsubscribe)
+      )
+      .subscribe(
+        model => {
+          this.snackBar.open("Las credenciales de autenticación han sido eliminadas", "Cerrar", {
+            duration: 2000
+          });
+          this.user.auth = null;
+          this.userAuthForm = this.createUserAuthForm();
+          this.userAuthForm.reset();
+        },
+        error => {
+          console.log("Error removing user auth credentials => ", error);
+          this.snackBar.open(
+            "Error eliminando credenciales de autenticación",
+            "Cerrar",
+            {
+              duration: 2000
+            }
+          );
+          this.userAuthForm.reset();
+        }
+      );
+  }
+
   /**
    * Reset the user password
    */
@@ -546,7 +567,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
     const data = this.userAuthForm.getRawValue();
 
     this.userFormService
-      .resetUserPassword$(this.user._id, data, this.paramBusinessId)
+      .resetUserPassword$(this.user._id, data)
       .pipe(
         mergeMap(resp => this.graphQlAlarmsErrorHandler$(resp)),
         filter((resp: any) => !resp.errors || resp.errors.length === 0),

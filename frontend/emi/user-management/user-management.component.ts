@@ -122,7 +122,6 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     .pipe(
       take(1)
     ).subscribe(selectedBusiness => {
-      console.log('selectedBusiness => ', selectedBusiness);
       if (!selectedBusiness || !selectedBusiness.id){
         this.showSnackBar('USER.SELECT_BUSINESS');
       }else{

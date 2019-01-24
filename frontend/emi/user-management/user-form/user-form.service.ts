@@ -15,6 +15,7 @@ import {
   getUserRoleMapping,
   createUser,
   createUserAuth,
+  removeUserAuth,
   updateUserGeneralInfo,
   updateUserState,
   resetUserPassword,
@@ -162,7 +163,6 @@ export class UserFormService {
     const userInput = {
       generalInfo: user.generalInfo
     };
-console.log('FE updateUserGeneralInfo -> ', userInput);
     return this.gateway.apollo.mutate<any>({
       mutation: updateUserGeneralInfo,
       variables: {
@@ -219,13 +219,27 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
     });
   }
 
+    /**
+   * Removes auth credentials from user
+   * @param userId Id of the user 
+   */
+  removeUserAuth$(userId): Observable<any> {
+    return this.gateway.apollo.mutate<any>({
+      mutation: removeUserAuth,
+      variables: {
+        userId: userId
+      },
+      errorPolicy: "all"
+    });
+  }
+
   /**
    * Resets the user password.
    * @param userId id of the user
    * @param userPassword new password
    * @param businessId Id of the business to which the user belongs
    */
-  resetUserPassword$(userId, userPassword, businessId): Observable<any> {
+  resetUserPassword$(userId, userPassword): Observable<any> {
     const userPasswordInput = {
       password: userPassword.password,
       temporary: userPassword.temporary || false
@@ -235,7 +249,6 @@ console.log('FE updateUserGeneralInfo -> ', userInput);
       mutation: resetUserPassword,
       variables: {
         userId: userId,
-        businessId: businessId,
         input: userPasswordInput
       },
       errorPolicy: "all"

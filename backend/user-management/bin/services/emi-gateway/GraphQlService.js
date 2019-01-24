@@ -157,6 +157,12 @@ class GraphQlService {
       },
       {
         aggregateType: "User",
+        messageType: "emigateway.graphql.mutation.removeUserAuth",
+        onErrorHandler,
+        onCompleteHandler
+      },
+      {
+        aggregateType: "User",
         messageType: "emigateway.graphql.mutation.resetUserPassword",
         onErrorHandler,
         onCompleteHandler

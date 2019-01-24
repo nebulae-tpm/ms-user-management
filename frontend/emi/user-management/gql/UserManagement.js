@@ -111,7 +111,7 @@ export const removeRolesFromUser = gql`
 `;
 
 export const createUser = gql`
-  mutation createUser($businessId: String!, $input: UserInput) {
+  mutation createUser($businessId: String!, $input: UserInput!) {
     createUser(businessId: $businessId, input: $input) {
       code
       message
@@ -120,7 +120,7 @@ export const createUser = gql`
 `;
 
 export const updateUserGeneralInfo = gql`
-  mutation updateUserGeneralInfo($userId: ID!, $input: UserInput) {
+  mutation updateUserGeneralInfo($userId: ID!, $input: UserInput!) {
     updateUserGeneralInfo(userId: $userId, input: $input) {
       code
       message
@@ -146,9 +146,18 @@ export const createUserAuth = gql`
   }
 `;
 
+export const removeUserAuth = gql`
+  mutation removeUserAuth($userId: ID!) {
+    removeUserAuth(userId: $userId) {
+      code
+      message
+    }
+  }
+`;
+
 export const resetUserPassword = gql`
-  mutation resetUserPassword($userId: ID!, $businessId: String!, $input: UserPasswordInput) {
-    resetUserPassword(userId: $userId, businessId: $businessId, input: $input) {
+  mutation resetUserPassword($userId: ID!, $input: UserPasswordInput) {
+    resetUserPassword(userId: $userId, input: $input) {
       code
       message
     }

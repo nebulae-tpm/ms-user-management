@@ -20,7 +20,6 @@ class UserEventConsumer {
    */
   handleUserCreated$(userCreatedEvent) {
     const user = userCreatedEvent.data;
-    console.log('handleUserCreated => ', userCreatedEvent);
     return UserDA.getUsers$(0, 1, undefined, user.businessId)
     //First user of a business must be created with the preconfigured roles 
     .mergeMap(users => {
@@ -31,7 +30,6 @@ class UserEventConsumer {
       return Rx.Observable.of(user);          
     })
     .mergeMap(user => {
-      console.log('Create user => ', user);
       return UserDA.createUser$(user)
     })
     .mergeMap(result => {
@@ -44,13 +42,11 @@ class UserEventConsumer {
    * @param {*} userAttributesUpdatedEvent user general info updated event
    */
   handleUserGeneralInfoUpdated$(userGeneralInfoUpdatedEvent) {
-    console.log('handleUserGeneralInfoUpdated => ', userGeneralInfoUpdatedEvent);
     const userGeneralInfo = userGeneralInfoUpdatedEvent.data;
     return UserDA.updateUserGeneralInfo$(
       userGeneralInfo._id,
       userGeneralInfo.generalInfo
     ).mergeMap(result => {
-      console.log('update result => ', result);
       return broker.send$(
         MATERIALIZED_VIEW_TOPIC,
         `UserUpdatedSubscription`,
@@ -64,13 +60,30 @@ class UserEventConsumer {
   * @param {*} userAuthCreatedEvent events that indicates the new state of the user
   */
  handleUserAuthCreated$(userAuthCreatedEvent) {
-  console.log('handleUserAuthCreated => ', userAuthCreatedEvent);
    return UserDA.updateUserAuthMongo$(
     userAuthCreatedEvent.aid,
     userAuthCreatedEvent.data
    )
    .mergeMap(result => {
-     console.log('result => ', result);
+     return broker.send$(
+       MATERIALIZED_VIEW_TOPIC,
+       `UserUpdatedSubscription`,
+       result
+     );
+   })
+   ;
+ }
+
+   /**
+  * Removes the user auth on the materialized view.
+  * @param {*} userAuthDeletedEvent events that indicates the user to which the auth credentials will be deleted
+  */
+ handleUserAuthDeleted$(userAuthDeletedEvent) {
+   return UserDA.removeUserAuthMongo$(
+    userAuthDeletedEvent.aid,
+    userAuthDeletedEvent.data
+   )
+   .mergeMap(result => {
      return broker.send$(
        MATERIALIZED_VIEW_TOPIC,
        `UserUpdatedSubscription`,
@@ -146,7 +159,7 @@ handleUserRolesRemoved$(userRolesRemovedEvent) {
 
   return UserDA.getRolesKeycloak$(user.userRoles.roles)
   .mergeMap(rolesKeycloak => UserDA.getUserById$(user._id).map(userMongo => [rolesKeycloak, userMongo]))
-  .mergeMap(([rolesKeycloak, userMongo]) => UserDA.removeRolesFromUser$(userMongo._id, userMongo.auth.userKeycloakId, rolesKeycloak))
+  .mergeMap(([rolesKeycloak, userMongo]) => UserDA.removeRolesFromUser$(userMongo._id, (userMongo.auth || {}).userKeycloakId, rolesKeycloak))
   .mergeMap(result => {
     return broker.send$(
       MATERIALIZED_VIEW_TOPIC,
@@ -154,16 +167,6 @@ handleUserRolesRemoved$(userRolesRemovedEvent) {
       result
     );
   });
-  // return UserDA.removeRolesFromUser$(
-  //   userRolesRemovedEvent.aid,
-  //   data.userRoles.roles
-  // ).mergeMap(result => {
-  //   return broker.send$(
-  //     MATERIALIZED_VIEW_TOPIC,
-  //     `UserUpdatedSubscription`,
-  //     UserDA.getUserByUserId$(userRolesRemovedEvent.aid)
-  //   );
-  // });
 }
 
   

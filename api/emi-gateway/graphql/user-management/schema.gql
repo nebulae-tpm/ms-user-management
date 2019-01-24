@@ -112,9 +112,9 @@ type Query {
 
 type Mutation {
   "Create a new user"
-  createUser(businessId: String!, input: UserInput): CommandResponse
+  createUser(businessId: String!, input: UserInput!): CommandResponse
   "Updates the user according to the ID"
-  updateUserGeneralInfo(userId: ID!, input: UserInput): CommandResponse
+  updateUserGeneralInfo(userId: ID!, input: UserInput!): CommandResponse
   "Updates the user state"
   updateUserState(userId: ID!, username: String!, state: Boolean!): CommandResponse
   "Creates auth for the user"
@@ -122,7 +122,7 @@ type Mutation {
   "Removes auth of the user (The user will be deleted from Keycloak)"
   removeUserAuth(userId: ID!): CommandResponse
   "Changes user password"
-  resetUserPassword(userId: ID!, businessId: String!, input: UserPasswordInput): CommandResponse  
+  resetUserPassword(userId: ID!, input: UserPasswordInput): CommandResponse  
   "Adds the roles to the user"
   addRolesToTheUser(userId: ID!, input: RolesInput): CommandResponse
   "Removes the roles from the user"

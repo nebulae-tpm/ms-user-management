@@ -37,7 +37,9 @@ export const locale = {
       NEW_PASSWORD: 'New password',
       PASSWORD_CONFIRMATION: 'Confirm new password',
       TEMPORARY: 'Temporary',
-      RESET_AUTH: 'Reset password',
+      RESET_AUTH: 'Reset auth credentials',
+      CREATE_AUTH: 'Create auth credentials',
+      REMOVE_USER_AUTH: 'Delete user credentials',
       ADD_ROLES: 'Add roles',
       REMOVE_ROLES: 'Remove roles',
       SYSTEM_ROLES: 'System roles',
@@ -67,6 +69,8 @@ export const locale = {
     }
   },
   ERRORS: {
+    1: 'Internal server error',
+    2: 'Permission denied',
     15001: 'Internal server error',
     16001: 'Internal server error',
     16002: 'Permission denied',
@@ -75,6 +79,10 @@ export const locale = {
     16012: 'invalid username, the username must contain at least 8 charactersand be composed by numbers, letters, periods and hyphens.',
     16014: 'The email is already used',
     16015: 'Permission denied, it is not possible to update your own users information',
-    16016: 'Usuario no encontrado'
+    16016: 'Permission denied, you dont have the permission to update an user that belongs to another business unit',
+    16017: 'invalid auth credentials',
+    16018: 'User already has auth credentials',
+    16019: 'User was not found',
+    16020: 'User does not have auth credentials',
   }
 };

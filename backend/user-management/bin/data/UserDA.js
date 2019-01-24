@@ -27,12 +27,11 @@ class UserDA {
     * @param {*} arrayRoles Roles to be added to the user
     */
    static addRolesToTheUser$(userMongo, arrayRoles) {
-    console.log('addRolesToTheUser1 ----> ', userMongo, arrayRoles);
     return Rx.Observable.of({userMongo, arrayRoles })
     //Adds roles to the user on Mongo
     .mergeMap(param => this.addRolesToTheUserMongo$(userMongo._id, arrayRoles))
     //Adds roles to the user on Keycloak
-    .mergeMap(userMongo => this.addRolesToTheUserKeycloak$(userMongo.auth.userKeycloakId, arrayRoles).mapTo(userMongo));
+    .mergeMap(userMongo => this.addRolesToTheUserKeycloak$((userMongo.auth || {}).userKeycloakId, arrayRoles).mapTo(userMongo));
   }
 
    /**
@@ -64,7 +63,6 @@ class UserDA {
     * @param {*} arrayRoles Roles to be added to the user
     */
    static removeRolesFromUser$(userId, userKeycloakId, arrayRoles) {
-    console.log('removeRolesToTheUser ----> ', userId, userKeycloakId, arrayRoles);
     return Rx.Observable.from(arrayRoles)
     .map(role => role.name)
     .toArray()
@@ -97,15 +95,18 @@ class UserDA {
 
   /**
     * Removes the specified roles to the user
-    * @param {*} userId Id of the user 
-    * @param {*} arrayRoles Roles to be removed from the user
+    * @param {*} userKeycloakId Id of the user, if the param is not sent then this method will do nothing.
+    * @param {*} arrayRoles Roles to be removed from the user, if the param is not sent or is empty then this method will do nothing.
     */
-   static removeRolesFromUserKeycloak$(userId, arrayRoles) {
+   static removeRolesFromUserKeycloak$(userKeycloakId, arrayRoles) {
+    if(!userKeycloakId || !arrayRoles || arrayRoles.length == 0){
+      return Rx.Observable.of(null);
+    }
 
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.realms.maps.unmap(
         process.env.KEYCLOAK_BACKEND_REALM_NAME,
-        userId,
+        userKeycloakId,
         arrayRoles
       )
     );
@@ -172,19 +173,27 @@ class UserDA {
       id: user._id
     };
 
-    console.log('USER =>  => ', user);
-    console.log('createUserKeycloak => ', userKeycloak);
-
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.users.create(
         process.env.KEYCLOAK_BACKEND_REALM_NAME,
         userKeycloak
       )
     )
-    .map(user => {
-      console.log('User create keycloak => ', user);
-      return user;
-    });
+    .catch(error => console.log('Error creating user on Keycloak => ', error));
+  }
+
+  /**
+   * Remove an user from Keycloak
+   * @param {*} user user to remove
+   */
+  static removeUserKeycloak$(userKeycloakId) {
+
+    return Rx.Observable.defer(() =>
+      KeycloakDA.keycloakClient.users.remove(
+        process.env.KEYCLOAK_BACKEND_REALM_NAME,
+        userKeycloakId
+      )
+    );
   }
 
 
@@ -274,6 +283,29 @@ class UserDA {
   }
 
   /**
+   * Removes the user auth
+   * @param {*} userId User ID
+   * @param {*} userAuth Object
+   * @param {*} userAuth.userKeycloakId user keycloak ID
+   * @param {*} userAuth.username username
+   */
+  static removeUserAuthMongo$(userId, userAuth) {
+    const collection = mongoDB.db.collection(CollectionName);
+
+    return Rx.Observable.defer(()=>
+        collection.findOneAndUpdate(
+          { _id: userId },
+          {
+            $unset: {auth: ""}
+          },{
+            returnOriginal: false
+          }
+        )
+    )
+    .map(result => result && result.value ? result.value : undefined);
+  }
+
+  /**
    * Updates the user state
    * @param {*} userId User ID
    * @param {*} newUserState boolean that indicates the new user state
@@ -295,7 +327,6 @@ class UserDA {
    * @param {*} newUserState boolean that indicates the new user state
    */
   static updateUserStateMongo$(userId, newUserState) {
-    console.log('updateUserStateMongo => ', userId, newUserState);
     const collection = mongoDB.db.collection(CollectionName);
     
     return Rx.Observable.defer(()=>
@@ -335,7 +366,6 @@ class UserDA {
    * @param {*} userPassword
    */
   static resetUserPasswordKeycloak$(userId, userPassword) {
-    console.log('resetUserPassword => ', userId, userPassword);
     return Rx.Observable.defer(() =>
       KeycloakDA.keycloakClient.users.resetPassword(
         process.env.KEYCLOAK_BACKEND_REALM_NAME,
@@ -442,7 +472,6 @@ class UserDA {
     if(email){
       optionsFilter.email = email;
     }
-    console.log('getUserKeycloak');
     return Rx.Observable.of(optionsFilter)
     .mergeMap(filter => {
       return KeycloakDA.keycloakClient.users.find(
@@ -495,7 +524,6 @@ class UserDA {
     if(ignoreUserId){
       query._id = {$ne: ignoreUserId};
     }
-    console.log('getUserByEmailMongo');
     return this.getUserByFilter$(query);
   }
 
@@ -600,14 +628,8 @@ class UserDA {
       KeycloakDA.keycloakClient.realms.roles.find(
         process.env.KEYCLOAK_BACKEND_REALM_NAME
       )
-    ).mergeMap(roles => {
-      console.log('getRolesKeycloak => ', roles);
-      return Rx.Observable.from(roles);
-    })
-    .filter(roleKeycloak => {
-      console.log('roleKeycloak --> ', roleKeycloak, roles);
-      return roles == null || roles.includes(roleKeycloak.name);
-    })
+    ).mergeMap(roles => Rx.Observable.from(roles))
+    .filter(roleKeycloak => roles == null || roles.includes(roleKeycloak.name))
     .toArray();
   }
 }
