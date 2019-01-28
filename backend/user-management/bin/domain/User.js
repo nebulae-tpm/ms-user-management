@@ -451,6 +451,7 @@ class User {
   //#region  mappers for API responses
 
   handleError$(err) {
+    console.log('handleError$ ==> ', err);
     return Rx.Observable.of(err).map(err => {
       const exception = { data: null, result: {} };
       const isCustomError = err instanceof CustomError;

@@ -13,7 +13,7 @@ spec:
         app: user-management
     spec:      
       containers:
-      - image: nebulaetpm/user-management.backend.user-management:0.0.4
+      - image: nebulaetpm/user-management.backend.user-management:0.0.5
         name: user-management
         volumeMounts:
         - name: google-application-credentials
