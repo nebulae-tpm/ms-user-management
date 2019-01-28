@@ -13,7 +13,6 @@ let instance;
 class UserEventConsumer {
   constructor() {}
 
-
   /**
    * Persists the user on the materialized view according to the received data from the event store.
    * @param {*} userCreatedEvent User created event
