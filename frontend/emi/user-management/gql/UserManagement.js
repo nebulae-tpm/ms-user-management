@@ -101,6 +101,7 @@ export const addRolesToTheUser = gql`
   }
 `;
 
+
 export const removeRolesFromUser = gql`
   mutation removeRolesFromUser($userId: ID!, $input: RolesInput) {
     removeRolesFromUser(userId: $userId, input: $input) {
