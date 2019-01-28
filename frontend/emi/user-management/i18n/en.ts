@@ -43,7 +43,7 @@ export const locale = {
       TEMPORARY: 'Temporary',
       RESET_AUTH: 'Reset auth credentials',
       CREATE_AUTH: 'Create auth credentials',
-      REMOVE_USER_AUTH: 'Delete user credentials',
+      REMOVE_USER_AUTH: 'Delete credentials',
       ADD_ROLES: 'Add roles',
       REMOVE_ROLES: 'Remove roles',
       SYSTEM_ROLES: 'System roles',

@@ -129,11 +129,11 @@
         <mat-tab label="{{'USER.AUTH' | translate}}" *ngIf="user._id">
           <div class="tab-content p-24" fusePerfectScrollbar>
 
-            <form name="userAuthForm" [formGroup]="userAuthForm" class="user w-100-p" fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
+            <form name="userAuthForm" [formGroup]="userAuthForm" #formDirective="ngForm" class="user w-100-p" fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
               <div fxLayout="row">
                 <div fxFlex="80" *ngIf="user.auth && user.auth.userKeycloakId" fxLayoutAlign="start start" class="h2">{{'USER.RESET_AUTH' | translate}}</div>
                 <div fxFlex="80" *ngIf="!user.auth || !user.auth.userKeycloakId" fxLayoutAlign="start start" class="h2">{{'USER.CREATE_AUTH' | translate}}</div>
-                <button mat-raised-button *ngIf="user.auth && user.auth.userKeycloakId" (click)="removeUserAuth()">{{'USER.REMOVE_USER_AUTH' | translate}}</button>
+                <button mat-raised-button *ngIf="user.auth && user.auth.username" color="'accent'" (click)="removeUserAuth(formDirective)">{{'USER.REMOVE_USER_AUTH' | translate}}</button>
               </div>
 
               <mat-form-field class="w-100-p">
@@ -173,9 +173,9 @@
               </mat-slide-toggle>
 
               <div class="mt-16">
-                <button mat-raised-button *ngIf="user._id && (!user.auth || !user.auth.userKeycloakId)" (click)="createUserAuth()"
+                <button mat-raised-button *ngIf="user._id && (!user.auth || !user.auth.username)" (click)="createUserAuth(formDirective)"
                   [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.SAVE' | translate}}</button>
-                <button mat-raised-button *ngIf="user._id && user.auth && user.auth.userKeycloakId" (click)="resetUserPassword()"
+                <button mat-raised-button *ngIf="user._id && user.auth && user.auth.username" (click)="resetUserPassword(formDirective)"
                   [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.RESET_PASSWORD' | translate}}</button>
               </div>
 

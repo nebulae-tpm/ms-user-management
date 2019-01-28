@@ -2,7 +2,7 @@ import { UserManagementService } from './../user-management.service';
 import { FuseTranslationLoaderService } from '../../../../core/services/translation-loader.service';
 import { TranslateService } from '@ngx-translate/core';
 import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl, FormGroupDirective } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { locale as english } from '../i18n/en';
 import { locale as spanish } from '../i18n/es';
@@ -446,7 +446,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Create the user auth on Keycloak
    */
-  createUserAuth() {
+  createUserAuth(formDirective: FormGroupDirective) {
     const data = this.userAuthForm.getRawValue();
 
     this.userFormService
@@ -461,7 +461,21 @@ export class UserFormComponent implements OnInit, OnDestroy {
           this.snackBar.open('El usuario ha sido actualizado', 'Cerrar', {
             duration: 2000
           });
-          this.userAuthForm.reset();
+
+          this.user.auth = { username: data.username, userKeycloakId: '' };
+
+          formDirective.resetForm();
+          this.userAuthForm = this.createUserAuthForm();
+          // this.userAuthForm.reset();
+          // console.log('DATA DEL FORM => ', data);
+          // this.userAuthForm.get('username').setValue(data.username);
+          // this.userAuthForm.get('username').disable();
+
+          // this.userAuthForm.get('password').setValue('');
+          // this.userAuthForm.get('passwordConfirmation').setValue('');
+
+
+
         },
         error => {
           console.log('Error resetting user password => ', error);
@@ -513,7 +527,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
     /**
    * Reset the user password
    */
-  removeUserAuth() {
+  removeUserAuth(formDirective: FormGroupDirective) {
     this.userFormService
       .removeUserAuth$(this.user._id)
       .pipe(
@@ -526,9 +540,10 @@ export class UserFormComponent implements OnInit, OnDestroy {
           this.snackBar.open('Las credenciales de autenticación han sido eliminadas', 'Cerrar', {
             duration: 2000
           });
+          console.log('AUTHS TO REMOVE ==> ', this.user.auth);
           this.user.auth = null;
+          formDirective.resetForm();
           this.userAuthForm = this.createUserAuthForm();
-          this.userAuthForm.reset();
         },
         error => {
           console.log('Error removing user auth credentials => ', error);
@@ -547,7 +562,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Reset the user password
    */
-  resetUserPassword() {
+  resetUserPassword(formDirective: FormGroupDirective) {
     const data = this.userAuthForm.getRawValue();
 
     this.userFormService
@@ -562,7 +577,9 @@ export class UserFormComponent implements OnInit, OnDestroy {
           this.snackBar.open('El usuario ha sido actualizado', 'Cerrar', {
             duration: 2000
           });
-          this.userAuthForm.reset();
+
+          formDirective.resetForm();
+          this.userAuthForm = this.createUserAuthForm();
         },
         error => {
           console.log('Error resetting user password => ', error);
