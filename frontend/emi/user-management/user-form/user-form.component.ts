@@ -1,26 +1,27 @@
 import { UserManagementService } from './../user-management.service';
-import { FuseTranslationLoaderService } from "../../../../core/services/translation-loader.service";
-import { TranslateService } from "@ngx-translate/core";
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from "@angular/core";
-import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from "@angular/forms";
-import { Router, ActivatedRoute } from "@angular/router";
-import { locale as english } from "../i18n/en";
-import { locale as spanish } from "../i18n/es";
-import { MatSnackBar } from "@angular/material";
-import { User } from "./../model/user.model";
-import { UserFormService } from "./user-form.service";
-import { ToolbarService } from "../../../toolbar/toolbar.service";
+import { FuseTranslationLoaderService } from '../../../../core/services/translation-loader.service';
+import { TranslateService } from '@ngx-translate/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
+import { locale as english } from '../i18n/en';
+import { locale as spanish } from '../i18n/es';
+import { MatSnackBar } from '@angular/material';
+import { User } from './../model/user.model';
+import { UserFormService } from './user-form.service';
+import { ToolbarService } from '../../../toolbar/toolbar.service';
 
 ////////// RXJS ///////////
 // tslint:disable-next-line:import-blacklist
-import * as Rx from "rxjs/Rx";
-import { of, from, Subject, Observable} from "rxjs";
-import { takeUntil, first, filter, tap, mergeMap, map, toArray, take, debounceTime } from "rxjs/operators";
+import * as Rx from 'rxjs/Rx';
+import { of, from, Subject, Observable} from 'rxjs';
+import { takeUntil, first, filter, tap, mergeMap, map, toArray, take, debounceTime } from 'rxjs/operators';
 
 @Component({
-  selector: "app-user-form",
-  templateUrl: "./user-form.component.html",
-  styleUrls: ["./user-form.component.scss"]
+  // tslint:disable-next-line:component-selector
+  selector: 'app-user-form',
+  templateUrl: './user-form.component.html',
+  styleUrls: ['./user-form.component.scss']
 })
 export class UserFormComponent implements OnInit, OnDestroy {
   private ngUnsubscribe = new Subject();
@@ -60,9 +61,9 @@ export class UserFormComponent implements OnInit, OnDestroy {
     this.userAuthForm = this.createUserAuthForm();
     this.userStateForm = this.createUserStateForm();
     this.userRolesForm = this.createUserRolesForm();
-    //this.refreshRoles();
+    // this.refreshRoles();
     this.findUser();
-    
+
   }
 
   getBusinessFiltered$(filterText: String, limit: number): Observable<any[]> {
@@ -85,11 +86,10 @@ export class UserFormComponent implements OnInit, OnDestroy {
             mergeMap(business => {
               return of({...params, businessId: business.id});
             })
-          )
-
+          );
         }),
         mergeMap((params: any) => {
-          if(params.id === "new"){
+          if (params.id === 'new'){
             return Rx.Observable.of([undefined, params.businessId, params.username]);
           }else{
             return this.userFormService.getUser$(params.id)
@@ -108,13 +108,13 @@ export class UserFormComponent implements OnInit, OnDestroy {
             ? userData.data.getUser
             : undefined
         );
-        this.pageType = this.user._id ? "edit" : "new";
+        this.pageType = this.user._id ? 'edit' : 'new';
 
         this.userGeneralInfoForm = this.createUserGeneralInfoForm();
         this.userAuthForm = this.createUserAuthForm();
         this.userStateForm = this.createUserStateForm();
         this.userRolesForm = this.createUserRolesForm();
-        //this.loadRoles();
+        // this.loadRoles();
 
         this.refreshRoles();
       });
@@ -126,26 +126,26 @@ export class UserFormComponent implements OnInit, OnDestroy {
   createUserGeneralInfoForm() {
     return this.formBuilder.group({
       name: [
-        this.user.generalInfo ? this.user.generalInfo.name : "",
+        this.user.generalInfo ? this.user.generalInfo.name : '',
         Validators.required
       ],
       lastname: [
-        this.user.generalInfo ? this.user.generalInfo.lastname : "",
+        this.user.generalInfo ? this.user.generalInfo.lastname : '',
         Validators.required
       ],
       documentType: [
-        this.user.generalInfo ? this.user.generalInfo.documentType : "",
+        this.user.generalInfo ? this.user.generalInfo.documentType : '',
         Validators.required
       ],
       documentId: [
-        this.user.generalInfo ? this.user.generalInfo.documentId : "",
+        this.user.generalInfo ? this.user.generalInfo.documentId : '',
         Validators.required
       ],
       email: [
-        this.user.generalInfo ? this.user.generalInfo.email : "",
+        this.user.generalInfo ? this.user.generalInfo.email : '',
         Validators.email
       ],
-      phone: [this.user.generalInfo ? this.user.generalInfo.phone : "", Validators.required]
+      phone: [this.user.generalInfo ? this.user.generalInfo.phone : '', Validators.required]
     });
   }
 
@@ -166,30 +166,28 @@ export class UserFormComponent implements OnInit, OnDestroy {
       {
         username: [
         {
-          value: this.user.auth ? this.user.auth.username: '',
-          disabled: (this.pageType != "new" && this.user.auth && this.user.auth.username)
+          value: this.user.auth ? this.user.auth.username : '',
+          disabled: (this.pageType !== 'new' && this.user.auth && this.user.auth.username)
         },
         Validators.compose([
           Validators.required,
-          Validators.pattern("^[a-zA-Z0-9._-]{8,}$")
+          Validators.pattern('^[a-zA-Z0-9._-]{8,}$')
         ])
       ],
         password: [
-          "",
+          '',
           Validators.compose([
             Validators.required,
-            Validators.pattern(
-              "^(?=[a-zA-Z0-9.]{8,}$)(?=.*?[a-z])(?=.*?[0-9]).*"
-            )
+            Validators.pattern('^(?=[a-zA-Z0-9.]{8,}$)(?=.*?[a-z])(?=.*?[0-9]).*')
           ])
         ],
-        passwordConfirmation: ["", Validators.required],
+        passwordConfirmation: ['', Validators.required],
         temporary: [false, Validators.required]
       },
       {
         validator: this.checkIfMatchingPasswords(
-          "password",
-          "passwordConfirmation"
+          'password',
+          'passwordConfirmation'
         )
       }
     );
@@ -198,12 +196,12 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Creates the user roles reactive form
    */
-  createUserRolesForm() {    
+  createUserRolesForm() {
     const rolesForm = new FormGroup({
       roles : new FormArray([])
     });
 
-    return rolesForm;    
+    return rolesForm;
   }
 
    /**
@@ -211,7 +209,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    */
   goToUserDetail() {
       setTimeout(() => {
-        this.router.navigate(['user-management/'] , { queryParams: {}})
+        this.router.navigate(['user-management/'] , { queryParams: {}});
       }, 1000);
   }
 
@@ -225,7 +223,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
     passwordConfirmationKey: string
   ) {
     return (group: FormGroup) => {
-      let passwordInput = group.controls[passwordKey],
+      const passwordInput = group.controls[passwordKey],
         passwordConfirmationInput = group.controls[passwordConfirmationKey];
       if (passwordInput.value !== passwordConfirmationInput.value) {
         return passwordConfirmationInput.setErrors({ notEquivalent: true });
@@ -251,14 +249,14 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("El usuario ha sido creada", "Cerrar", {
+          this.snackBar.open('El usuario ha sido creada', 'Cerrar', {
             duration: 2000
           });
           this.goToUserDetail();
-          //this.businessCreated.emit(this.selectedBusiness);
+          // this.businessCreated.emit(this.selectedBusiness);
         },
         error => {
-          console.log("Error creando usuario => ", error);
+          console.log('Error creando usuario => ', error);
         }
       );
   }
@@ -267,7 +265,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Updates the user general info according to the info entered into the form
    */
   updateUserGeneralInfo() {
-    const data:any = {};
+    const data: any = {};
     data.generalInfo = this.userGeneralInfoForm.getRawValue();
 
     this.userFormService
@@ -279,12 +277,12 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("El usuario ha sido actualizado", "Cerrar", {
+          this.snackBar.open('El usuario ha sido actualizado', 'Cerrar', {
             duration: 2000
           });
         },
         error => {
-          console.log("Error updating user general info => ", error);
+          console.log('Error updating user general info => ', error);
         }
       );
   }
@@ -320,16 +318,16 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * Refresh roles
    */
   refreshRoles() {
-    if (this.pageType == "new") {
+    if (this.pageType === 'new') {
       return;
     }
     this.loadRoles$()
     .pipe(
-      map(roles => [roles, this.user.roles]), 
-      takeUntil(this.ngUnsubscribe)     
+      map(roles => [roles, this.user.roles]),
+      takeUntil(this.ngUnsubscribe)
     )
     .subscribe(([roles, userRoles]) => {
-      roles.forEach(role => {          
+      roles.forEach(role => {
         (this.userRolesForm.get('roles') as FormArray).push(
           new FormGroup({
             key: new FormControl(role),
@@ -340,21 +338,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  removeRoles(roles) {
-    for (var i = 0; i < this.roles.length; i++) {
-      var obj = this.roles[i];
-
-      if (
-        roles
-          .map(data => {
-            data.id;
-          })
-          .indexOf(obj.id) !== -1
-      ) {
-        this.roles.splice(i, 1);
-      }
-    }
-  }
 
   /**
    * Adds the selected roles to the selected user
@@ -368,17 +351,16 @@ export class UserFormComponent implements OnInit, OnDestroy {
         takeUntil(this.ngUnsubscribe)
       )
       .subscribe(
+        // 'Se han agregado nuevos roles al usuario',
         model => {
           this.snackBar.open(
-            "Se han agregado nuevos roles al usuario",
-            "Cerrar",
-            {
-              duration: 2000
-            }
+            this.translationLoader.getTranslate().instant('USER.CREDENTIALS.ROLE_ADDED'),
+            this.translationLoader.getTranslate().instant('USER.CLOSE'),
+            { duration: 2000 }
           );
         },
         error => {
-          console.log("Error adding roles to the user ==> ", error);
+          console.log('Error adding roles to the user ==> ', error);
         }
       );
   }
@@ -396,13 +378,15 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("Se han eliminado roles de usuario", "Cerrar", {
-            duration: 2000
-          });
+          this.snackBar.open(
+            this.translationLoader.getTranslate().instant('USER.CREDENTIALS.ROLE_REMOVED'),
+            this.translationLoader.getTranslate().instant('USER.CLOSE'),
+            { duration: 2000 }
+          );
         },
         error => {
-          console.log("Error removing roles from the user ==> ", error);
-          //this.refreshRoles();
+          console.log('Error removing roles from the user ==> ', error);
+          // this.refreshRoles();
         }
       );
   }
@@ -412,16 +396,15 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * @param $event
    */
   onUserRolesChange(key, roleEvent) {
-    if(roleEvent.checked){
+    if (roleEvent.checked) {
       const rolesToAdd = [];
       rolesToAdd.push(key);
       this.addRolesToUser(rolesToAdd);
-    }else{
+    } else {
       const rolesToRemove = [];
       rolesToRemove.push(key);
       this.removeRolesFromUser(rolesToRemove);
     }
-
 
   }
 
@@ -432,7 +415,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * @param $event
    */
   onUserStateChange($event) {
-    if (this.pageType == "new") {
+    if (this.pageType === 'new') {
       return;
     }
 
@@ -446,15 +429,15 @@ export class UserFormComponent implements OnInit, OnDestroy {
       .subscribe(
         model => {
           this.snackBar.open(
-            "El estado del usuario ha sido actualizado",
-            "Cerrar",
+            'El estado del usuario ha sido actualizado',
+            'Cerrar',
             {
               duration: 2000
             }
           );
         },
         error => {
-          console.log("Error updating user state => ", error);
+          console.log('Error updating user state => ', error);
         }
       );
   }
@@ -462,7 +445,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
   /**
    * Create the user auth on Keycloak
    */
-  createUserAuth() {    
+  createUserAuth() {
     const data = this.userAuthForm.getRawValue();
 
     this.userFormService
@@ -474,16 +457,16 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("El usuario ha sido actualizado", "Cerrar", {
+          this.snackBar.open('El usuario ha sido actualizado', 'Cerrar', {
             duration: 2000
           });
           this.userAuthForm.reset();
         },
         error => {
-          console.log("Error resetting user password => ", error);
+          console.log('Error resetting user password => ', error);
           this.snackBar.open(
-            "Error reseteando contraseña del usuario",
-            "Cerrar",
+            'Error reseteando contraseña del usuario',
+            'Cerrar',
             {
               duration: 2000
             }
@@ -507,16 +490,16 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("Los roles del usuario han sido actualizados", "Cerrar", {
+          this.snackBar.open('Los roles del usuario han sido actualizados', 'Cerrar', {
             duration: 2000
           });
           this.userAuthForm.reset();
         },
         error => {
-          console.log("Error updating user roles => ", error);
+          console.log('Error updating user roles => ', error);
           this.snackBar.open(
-            "Error actualizando roles del usuario",
-            "Cerrar",
+            'Error actualizando roles del usuario',
+            'Cerrar',
             {
               duration: 2000
             }
@@ -539,7 +522,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("Las credenciales de autenticación han sido eliminadas", "Cerrar", {
+          this.snackBar.open('Las credenciales de autenticación han sido eliminadas', 'Cerrar', {
             duration: 2000
           });
           this.user.auth = null;
@@ -547,10 +530,10 @@ export class UserFormComponent implements OnInit, OnDestroy {
           this.userAuthForm.reset();
         },
         error => {
-          console.log("Error removing user auth credentials => ", error);
+          console.log('Error removing user auth credentials => ', error);
           this.snackBar.open(
-            "Error eliminando credenciales de autenticación",
-            "Cerrar",
+            'Error eliminando credenciales de autenticación',
+            'Cerrar',
             {
               duration: 2000
             }
@@ -575,16 +558,16 @@ export class UserFormComponent implements OnInit, OnDestroy {
       )
       .subscribe(
         model => {
-          this.snackBar.open("El usuario ha sido actualizado", "Cerrar", {
+          this.snackBar.open('El usuario ha sido actualizado', 'Cerrar', {
             duration: 2000
           });
           this.userAuthForm.reset();
         },
         error => {
-          console.log("Error resetting user password => ", error);
+          console.log('Error resetting user password => ', error);
           this.snackBar.open(
-            "Error reseteando contraseña del usuario",
-            "Cerrar",
+            'Error reseteando contraseña del usuario',
+            'Cerrar',
             {
               duration: 2000
             }
@@ -614,11 +597,11 @@ export class UserFormComponent implements OnInit, OnDestroy {
         response.errors.forEach(error => {
           if (Array.isArray(error)) {
             error.forEach(errorDetail => {
-              this.showMessageSnackbar("ERRORS." + errorDetail.message.code);
+              this.showMessageSnackbar('ERRORS.' + errorDetail.message.code);
             });
           } else {
-            response.errors.forEach(error => {
-              this.showMessageSnackbar("ERRORS." + error.message.code);
+            response.errors.forEach(err => {
+              this.showMessageSnackbar('ERRORS.' + err.message.code);
             });
           }
         });
@@ -632,7 +615,7 @@ export class UserFormComponent implements OnInit, OnDestroy {
    * @param detailMessageKey Key of the detail message to i18n
    */
   showMessageSnackbar(messageKey, detailMessageKey?) {
-    let translationData = [];
+    const translationData = [];
     if (messageKey) {
       translationData.push(messageKey);
     }
@@ -643,8 +626,8 @@ export class UserFormComponent implements OnInit, OnDestroy {
 
     this.translate.get(translationData).subscribe(data => {
       this.snackBar.open(
-        messageKey ? data[messageKey] : "",
-        detailMessageKey ? data[detailMessageKey] : "",
+        messageKey ? data[messageKey] : '',
+        detailMessageKey ? data[detailMessageKey] : '',
         {
           duration: 2000
         }

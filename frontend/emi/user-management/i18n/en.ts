@@ -2,6 +2,10 @@ export const locale = {
   lang: 'en',
   data: {
     USER: {
+      CREDENTIALS: {
+        ROLE_ADDED: 'Roles has been added',
+        ROLE_REMOVED: 'Roles has been removed'
+      },
       SELECT_BUSINESS: 'You must select a business unit',
       SEARCH_USER: 'Search user',
       USER: 'Users',

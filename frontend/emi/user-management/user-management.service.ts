@@ -71,6 +71,7 @@ export class UserManagementService {
  * @param businessId Id of the business which will be use to filter the users
  */
   getUsers$(pageValue, countValue, searchFilter, businessId){
+    console.log('#########', businessId);
     return this.gateway.apollo
     .query<any>({
       query: getUsers,

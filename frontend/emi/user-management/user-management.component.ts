@@ -180,6 +180,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   getBusinessFilter$(){
     return this.toolbarService.onSelectedBusiness$
     .pipe(
+      tap(r => console.log(' getBusinessFilter$()', r) ),
       debounceTime(150),
       distinctUntilChanged()
     );
@@ -193,6 +194,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     )
     .pipe(
       filter(([userFilter, businessFilter, paginator]) => businessFilter != null),
+      tap(([userFilter, businessFilter, paginator]) => {
+        console.log('businessFilter', businessFilter);
+      }),
       mergeMap(([userFilter, businessFilter, paginator]) =>
         this.getUsers$(paginator.pageIndex, paginator.pageSize, userFilter, businessFilter.id)),
       takeUntil(this.ngUnsubscribe)

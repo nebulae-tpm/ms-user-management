@@ -59,14 +59,14 @@
               </div>
 
               <!-- <mat-form-field class="w-100-p">
-                <input matInput name="username" formControlName="username" maxlength="15" placeholder="{{'USER.USERNAME' | translate}}">
-                <mat-error *ngIf="userGeneralInfoForm.hasError('required', ['username'])">
-                  {{'USER.USERNAME_REQUIRED' | translate}}
-                </mat-error>
-                <mat-error *ngIf="userGeneralInfoForm.hasError('pattern', ['username'])">
-                  {{'USER.INVALID_USERNAME_FORMAT' | translate}}
-                </mat-error>
-              </mat-form-field> -->
+                        <input matInput name="username" formControlName="username" maxlength="15" placeholder="{{'USER.USERNAME' | translate}}">
+                        <mat-error *ngIf="userGeneralInfoForm.hasError('required', ['username'])">
+                          {{'USER.USERNAME_REQUIRED' | translate}}
+                        </mat-error>
+                        <mat-error *ngIf="userGeneralInfoForm.hasError('pattern', ['username'])">
+                          {{'USER.INVALID_USERNAME_FORMAT' | translate}}
+                        </mat-error>
+                      </mat-form-field> -->
 
               <mat-form-field class="w-100-p">
                 <input matInput name="name" formControlName="name" maxlength="40" placeholder="{{'USER.NAME' | translate}}">
@@ -132,7 +132,7 @@
             <form name="userAuthForm" [formGroup]="userAuthForm" class="user w-100-p" fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
               <div fxLayout="row">
                 <div fxFlex="80" *ngIf="user.auth && user.auth.userKeycloakId" fxLayoutAlign="start start" class="h2">{{'USER.RESET_AUTH' | translate}}</div>
-                <div fxFlex="80" *ngIf="!user.auth || !user.auth.userKeycloakId" fxLayoutAlign="start start" class="h2">{{'USER.CREATE_AUTH' | translate}}</div>                
+                <div fxFlex="80" *ngIf="!user.auth || !user.auth.userKeycloakId" fxLayoutAlign="start start" class="h2">{{'USER.CREATE_AUTH' | translate}}</div>
                 <button mat-raised-button *ngIf="user.auth && user.auth.userKeycloakId" (click)="removeUserAuth()">{{'USER.REMOVE_USER_AUTH' | translate}}</button>
               </div>
 
@@ -173,8 +173,10 @@
               </mat-slide-toggle>
 
               <div class="mt-16">
-                  <button mat-raised-button *ngIf="user._id && (!user.auth || !user.auth.userKeycloakId)" (click)="createUserAuth()" [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.SAVE' | translate}}</button>
-                  <button mat-raised-button *ngIf="user._id && user.auth && user.auth.userKeycloakId" (click)="resetUserPassword()" [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.RESET_PASSWORD' | translate}}</button>
+                <button mat-raised-button *ngIf="user._id && (!user.auth || !user.auth.userKeycloakId)" (click)="createUserAuth()"
+                  [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.SAVE' | translate}}</button>
+                <button mat-raised-button *ngIf="user._id && user.auth && user.auth.userKeycloakId" (click)="resetUserPassword()"
+                  [disabled]="userAuthForm.invalid || userAuthForm.pristine">{{'USER.RESET_PASSWORD' | translate}}</button>
               </div>
 
             </form>
@@ -191,7 +193,7 @@
                   <div fxLayout="row">
 
                     <form name="userRolesForm" [formGroup]="userRolesForm" class="user w-100-p" fxLayout="column" class="mat-white-bg p-24 mr-24 mb-24">
-                        
+
                       <div fxFlex="100" formArrayName="roles" *ngFor="let role of userRolesForm.get('roles').controls ; let i = index;">
                           <div [formGroupName]="i" >
                               <mat-checkbox *ngIf="role.get('key')" [formControlName]="'active'" (change)="onUserRolesChange(role.get('key').value, $event)">

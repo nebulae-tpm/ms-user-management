@@ -1,14 +1,14 @@
-import { query } from "@angular/animations";
-import { Injectable } from "@angular/core";
+import { query } from '@angular/animations';
+import { Injectable } from '@angular/core';
 import {
   ActivatedRouteSnapshot,
   Resolve,
   RouterStateSnapshot
-} from "@angular/router";
-import { GatewayService } from "../../../../api/gateway.service";
-import * as Rx from "rxjs";
-import { Observable } from "rxjs/Observable";
-import { BehaviorSubject } from "rxjs/BehaviorSubject";
+} from '@angular/router';
+import { GatewayService } from '../../../../api/gateway.service';
+import * as Rx from 'rxjs';
+import { Observable } from 'rxjs/Observable';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import {
   getUser,
   getRoles,
@@ -21,7 +21,7 @@ import {
   resetUserPassword,
   addRolesToTheUser,
   removeRolesFromUser
-} from "../gql/UserManagement";
+} from '../gql/UserManagement';
 
 @Injectable()
 export class UserFormService {
@@ -60,8 +60,8 @@ export class UserFormService {
       variables: {
         id: id
       },
-      fetchPolicy: "network-only",
-      errorPolicy: "all"
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
   }
 
@@ -72,8 +72,8 @@ export class UserFormService {
   getRoles$() {
     return this.gateway.apollo.query<any>({
       query: getRoles,
-      fetchPolicy: "network-only",
-      errorPolicy: "all"
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
   }
 
@@ -89,8 +89,8 @@ export class UserFormService {
         userId: userId,
         businessId: businessId
       },
-      fetchPolicy: "network-only",
-      errorPolicy: "all"
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
   }
 
@@ -110,7 +110,7 @@ export class UserFormService {
         userId: userId,
         input: rolesInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -132,7 +132,7 @@ export class UserFormService {
         businessId: businessId,
         input: rolesInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -149,7 +149,7 @@ export class UserFormService {
         input: user,
         businessId: businessId
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -169,7 +169,7 @@ export class UserFormService {
         userId: userId,
         input: userInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -189,7 +189,7 @@ export class UserFormService {
         businessId: businessId,
         state: newState
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -215,13 +215,13 @@ export class UserFormService {
         username: userPassword.username,
         input: authInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
     /**
    * Removes auth credentials from user
-   * @param userId Id of the user 
+   * @param userId Id of the user
    */
   removeUserAuth$(userId): Observable<any> {
     return this.gateway.apollo.mutate<any>({
@@ -229,7 +229,7 @@ export class UserFormService {
       variables: {
         userId: userId
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -251,7 +251,7 @@ export class UserFormService {
         userId: userId,
         input: userPasswordInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 
@@ -271,7 +271,7 @@ export class UserFormService {
         userId: userId,
         input: rolesInput
       },
-      errorPolicy: "all"
+      errorPolicy: 'all'
     });
   }
 }
