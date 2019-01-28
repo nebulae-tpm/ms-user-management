@@ -612,7 +612,7 @@ class UserDA {
         }
       });
     }
-    return Rx.Observable.of(userRolesAllowed);
+    return Rx.Observable.of(userRolesAllowed.filter((v, i, s) => s.indexOf(v) === i ));
   }
 
 
